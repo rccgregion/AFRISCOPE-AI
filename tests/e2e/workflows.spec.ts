@@ -81,7 +81,10 @@ test('CSV mapping and rejected-row workflow persists', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Review import' }).click();
   await dialog.getByLabel('Dataset name').fill('E2E defect fixture');
   await dialog.getByRole('button', { name: 'Validate & import', exact: true }).click();
-  await expect(dialog.getByText('8', { exact: true }).first()).toBeVisible();
+  await expect(
+    dialog.getByRole('heading', { name: 'Import rejected — no source version created' }),
+  ).toBeVisible();
+  await expect(dialog.getByText('0 accepted · 8 rejected and retained')).toBeVisible();
   await expect(dialog.getByRole('link', { name: 'Rejection CSV' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Close dialog' }).click();
   await page.getByRole('tab', { name: 'Import history', exact: true }).click();

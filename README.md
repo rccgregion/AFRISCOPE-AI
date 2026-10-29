@@ -82,6 +82,10 @@ npm run demo:reset -- --confirm-demo-reset
 
 In Settings, a demo organisation administrator can type `RESET`. For CLI reset, stop the dev/server process first: PGlite allows only one process per database directory. Reset clears demo sessions and does not delete private organisations. Demo role switching is for evaluation only; disable demo access before private use.
 
+## Vercel
+
+See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL database (`DATABASE_URL` or `POSTGRES_URL`); PGlite local disk is not supported in serverless functions.
+
 ## Configuration
 
 See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.

@@ -1,4 +1,3 @@
-import { PGlite } from '@electric-sql/pglite';
 import pg from 'pg';
 import {
   readFileSync,
@@ -49,13 +48,16 @@ const normalize = (result: QueryResult) => ({
   ),
 });
 export async function createDatabase(
-  options: { path?: string; url?: string; migrate?: boolean } = {},
+  options: { path?: string; url?: string; migrate?: boolean; max?: number } = {},
 ): Promise<Database> {
   let tx: <T>(fn: (c: Client) => Promise<T>) => Promise<T>, close: () => Promise<void>;
-  if (options.url) {
+  const url =
+    options.url ??
+    (options.path ? undefined : process.env.DATABASE_URL || process.env.POSTGRES_URL);
+  if (url) {
     const pool = new pg.Pool({
-      connectionString: options.url,
-      max: 8,
+      connectionString: url,
+      max: options.max ?? (process.env.VERCEL ? 1 : 8),
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
     });
@@ -76,6 +78,7 @@ export async function createDatabase(
     };
     close = () => pool.end();
   } else {
+    const { PGlite } = await import('@electric-sql/pglite');
     const path = options.path || resolve(process.env.DATABASE_PATH || '.data/afriscope');
     if (path !== ':memory:') mkdirSync(path, { recursive: true });
     let lockPath: string | null = null;
@@ -154,6 +157,7 @@ export async function createDatabase(
   const db: Database = { admin, scoped, close };
   if (options.migrate !== false)
     await admin(async (c) => {
+      await c.query('select pg_advisory_xact_lock(729402)');
       await c.query(
         'create table if not exists schema_migrations(version text primary key,applied_at timestamptz not null default now())',
       );

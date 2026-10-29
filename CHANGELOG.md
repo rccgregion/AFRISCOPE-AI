@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Vercel serverless API adapter, external PostgreSQL default via `DATABASE_URL`/`POSTGRES_URL`, and deployment guide.
+
 - Added username-based sign-in alongside email sign-in, optional usernames on invitation acceptance, and username-aware administrator bootstrap.
 
 ## 0.1.0 — 2026-10-29

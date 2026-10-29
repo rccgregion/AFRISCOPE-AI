@@ -23,10 +23,18 @@ export async function api<T = Record<string, unknown>>(
     signal: options.signal,
   });
   if (!response.ok) {
-    const data = await response
-      .json()
-      .catch(() => ({ error: 'Connection unavailable. Please try again.' }));
-    throw new ApiError(data.error || 'Request failed', response.status);
+    const text = await response.text();
+    let message = `Request failed (HTTP ${response.status}).`;
+    try {
+      const data = JSON.parse(text) as { error?: string };
+      if (data.error) message = data.error;
+    } catch {
+      if (response.status === 404)
+        message = 'API endpoint not found. Check the deployment routing and function logs.';
+      else if (response.status >= 500)
+        message = 'The API is unavailable. Check the database configuration and deployment logs.';
+    }
+    throw new ApiError(message, response.status);
   }
   return response.json();
 }
