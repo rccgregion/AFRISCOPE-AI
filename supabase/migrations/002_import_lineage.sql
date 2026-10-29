@@ -1,0 +1,10 @@
+alter table budgets add column if not exists source_row integer;
+alter table funding_releases add column if not exists source_row integer;
+alter table procurement_events add column if not exists source_row integer;
+alter table expenditure_records add column if not exists source_row integer;
+grant select,insert,update,delete on all tables in schema public to afri_app;
+revoke all on auth_sessions,auth_throttle,invitations from afri_app;
+revoke update on user_profiles from afri_app;
+grant update(full_name,preferences,updated_at) on user_profiles to afri_app;
+grant usage on schema public to afri_app;
+grant execute on all functions in schema public to afri_app;

@@ -1,0 +1,5 @@
+external_id,name,unit,minimum_days,near_expiry_days
+MED001,Amoxicillin 500 mg,capsules,14,60
+MED002,Oral rehydration salts,sachets,14,60
+MED003,Paracetamol 500 mg,tablets,14,60
+MED004,Artemether / lumefantrine,tablets,14,60

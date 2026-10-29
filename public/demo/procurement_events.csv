@@ -1,0 +1,5 @@
+external_id,programme_code,title,stage,currency,amount,started_date,due_date,completed_date,expected_days,supplier,approval_reference
+PO-1,PRG-001,Essential medicines continuity — supply contract,Tender evaluation,NGN,30000000,2026-08-21,2026-09-20,,21,Synthetic supplier,
+PO-2,PRG-002,Primary care outreach — supply contract,Contract review,NGN,21250000,2026-08-13,2026-09-12,,21,Synthetic supplier,
+PO-3,PRG-003,District cold-chain strengthening — supply contract,Tender evaluation,KES,4000000,2026-08-05,2026-09-04,,21,Synthetic supplier,
+PO-4,PRG-004,Community health worker training — supply contract,Contract review,KES,3000000,2026-07-28,2026-08-27,,21,Synthetic supplier,

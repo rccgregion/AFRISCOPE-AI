@@ -1,0 +1,13 @@
+external_id,name,country,region,district,facility_type
+F001,Mtoni Clinic,Kijani Republic,Northern Zone,District 1,Clinic
+F002,Kijiji Clinic,Kijani Republic,Central Zone,District 1,Clinic
+F003,Nyota Health Centre,Kijani Republic,Northern Zone,District 2,Health centre
+F004,Msitu Clinic,Kijani Republic,Central Zone,District 2,Clinic
+F005,Upendo Clinic,Kijani Republic,Northern Zone,District 3,Clinic
+F006,Amani Health Centre,Kijani Republic,Central Zone,District 3,Health centre
+F007,Baraka Clinic,Umoja Federation,Northern Zone,District 4,Clinic
+F008,Nuru Clinic,Umoja Federation,Central Zone,District 4,Clinic
+F009,Furaha Health Centre,Umoja Federation,Northern Zone,District 5,Health centre
+F010,Tumaini Clinic,Umoja Federation,Central Zone,District 5,Clinic
+F011,Imani Clinic,Umoja Federation,Northern Zone,District 6,Clinic
+F012,Pamoja Health Centre,Umoja Federation,Central Zone,District 6,Health centre

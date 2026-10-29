@@ -1,0 +1,30 @@
+{
+  "seed": 20260930,
+  "as_of": "2026-09-30",
+  "organisation_id": "00000000-0000-4000-8000-000000000001",
+  "project_ids": [
+    "10000000-0000-4000-8000-000000000001",
+    "10000000-0000-4000-8000-000000000002",
+    "10000000-0000-4000-8000-000000000003"
+  ],
+  "synthetic": true,
+  "counts": {
+    "facilities.csv": 12,
+    "medicine_products.csv": 4,
+    "inventory.csv": 2496,
+    "deliveries.csv": 48,
+    "consumption.csv": 2496,
+    "budgets.csv": 4,
+    "funding_releases.csv": 8,
+    "procurement_events.csv": 4,
+    "expenditure_records.csv": 13,
+    "intervention_options.csv": 8,
+    "budget_scenarios.csv": 3,
+    "inventory_defects.csv": 8
+  },
+  "limitations": [
+    "Fictional countries, facilities, programmes and assumptions.",
+    "Weekly consumption is censored during stockouts; it is not uncensored demand.",
+    "No exchange rates, clinical effect estimates, or real personal data."
+  ]
+}

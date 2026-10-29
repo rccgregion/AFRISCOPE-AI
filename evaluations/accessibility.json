@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-29T13:03:29.981Z",
+  "tool": "axe-core WCAG 2/2.1 A/AA automated checks",
+  "limitation": "Automated checks are not a complete accessibility certification.",
+  "results": [
+    {
+      "route": "/welcome",
+      "violations": []
+    },
+    {
+      "route": "/",
+      "violations": []
+    },
+    {
+      "route": "/operations",
+      "violations": []
+    },
+    {
+      "route": "/data",
+      "violations": []
+    },
+    {
+      "route": "/planner",
+      "violations": []
+    },
+    {
+      "route": "/learning",
+      "violations": []
+    },
+    {
+      "route": "/governance",
+      "violations": []
+    }
+  ]
+}
