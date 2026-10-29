@@ -2,7 +2,7 @@
 
 ## Enter and navigate
 
-Open `/welcome` and choose **Explore the live workspace**, or sign in at `/sign-in`. “Live” means the application is functional; all demo records are synthetic and historical (reference date 2026-09-30). Use the header project selector for Medicine availability, Public finance, or Intervention planning. The sidebar contains all modules; search finds accessible projects, datasets, reports, experiments, alerts, and learning modules.
+Open `/welcome` and choose **Explore the live workspace**, or sign in at `/sign-in` with a username or email plus password. “Live” means the application is functional; all demo records are synthetic and historical (reference date 2026-09-30). Use the header project selector for Medicine availability, Public finance, or Intervention planning. The sidebar contains all modules; search finds accessible projects, datasets, reports, experiments, alerts, and learning modules.
 
 ## Roles
 

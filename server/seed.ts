@@ -514,20 +514,42 @@ export async function seedDemo(db: Database, reset = false) {
     await seedNarrative(tx, med, fin, plan, forecast, stock);
   });
 }
-export async function bootstrapAdmin(db: Database, email: string, password: string) {
+export async function bootstrapAdmin(
+  db: Database,
+  identity: { email?: string; username?: string },
+  password: string,
+) {
   if (password.length < 12) throw new Error('Use a password of at least 12 characters');
+  const email = identity.email?.trim().toLowerCase();
+  const username = identity.username?.trim().toLowerCase();
+  if (!email && !username) throw new Error('Provide an email or username');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Invalid email');
+  if (username && !/^[a-z0-9][a-z0-9._-]{2,31}$/.test(username))
+    throw new Error('Invalid username');
   await db.admin(async (c) => {
-    if ((await c.query('select id from user_profiles where email=$1', [email])).rows.length)
+    if (
+      email &&
+      (await c.query('select id from user_profiles where lower(email)= $1', [email])).rows.length
+    )
       throw new Error('Account already exists');
+    if (
+      username &&
+      (await c.query('select id from user_profiles where lower(username)= $1', [username])).rows
+        .length
+    )
+      throw new Error('Username already exists');
     const salt = randomBytes(16).toString('hex');
     const hash = scryptSync(password, salt, 64).toString('hex');
     const u = await insert(c, 'user_profiles', {
-      email,
-      full_name: 'Organisation administrator',
+      email: email || null,
+      username: username || null,
+      full_name: username || 'Organisation administrator',
       password_hash: `scrypt:${salt}:${hash}`,
       is_platform_admin: false,
     });
-    const o = await insert(c, 'organisations', { name: email.split('@')[1] + ' workspace' });
+    const o = await insert(c, 'organisations', {
+      name: (email ? email.split('@')[1] : username) + ' workspace',
+    });
     await insert(c, 'organisation_memberships', {
       organisation_id: o.id,
       user_id: u.id,

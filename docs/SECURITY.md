@@ -3,6 +3,7 @@
 ## Implemented controls
 
 - Opaque 32-byte session tokens; only SHA-256 hashes stored; eight-hour expiry; httpOnly, SameSite=Strict cookies; Secure in production.
+- Username or email sign-in; usernames are case-insensitive and constrained.
 - scrypt password hashes with per-user salt; constant-time comparison; per-email attempt throttle (eight per 15 minutes).
 - Unsafe requests require a custom header and permitted Origin; JSON body limit 1 MB.
 - Organisation/project RLS under a non-login application role; transaction-local user context; column grants protect password/platform-admin fields; session/invitation tables are inaccessible to that role.

@@ -8,6 +8,14 @@ export const date = z
     'Invalid calendar date',
   );
 export const text = z.string().trim().min(1).max(5000);
+export const username = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(
+    /^[a-z0-9][a-z0-9._-]{2,32}$/,
+    'Use 3–32 lowercase letters, numbers, dots, underscores or hyphens; start with a letter or number',
+  );
 export const quantity = z.number().int().min(0).max(100000000);
 export const currency = z.string().regex(/^[A-Z]{3}$/);
 export const projectSchema = z.object({

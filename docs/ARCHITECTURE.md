@@ -24,7 +24,7 @@ flowchart LR
 ## Request and tenant boundary
 
 1. Unsafe API requests require `X-AfriScope-Request: 1`; a supplied Origin must match the configured origin or request host.
-2. A hashed opaque session token resolves the user through the administrative connection.
+2. Sign-in accepts a username or email; a hashed opaque session token resolves the user through the administrative connection.
 3. Each scoped transaction sets `app.user_id` and `SET LOCAL ROLE afri_app`.
 4. RLS policies use membership helper functions; API permission checks provide clear errors and defence in depth.
 5. Tenant and cross-project reference triggers protect relational links. Evidence, versions, runs, approvals, and audit records have no application-role update policy.

@@ -391,7 +391,8 @@ export function SettingsPage() {
           <KeyValue
             data={{
               Name: workspace?.user.full_name,
-              Email: workspace?.user.email,
+              Username: workspace?.user.username || '—',
+              Email: workspace?.user.email || '—',
               Session: 'HttpOnly cookie · 8-hour expiry',
               Authentication: 'Secure local session or explicit demo access',
             }}

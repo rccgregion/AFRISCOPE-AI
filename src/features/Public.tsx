@@ -378,6 +378,7 @@ export function SignIn() {
                       body: {
                         token: invite,
                         full_name: f.get('full_name'),
+                        username: f.get('username') || undefined,
                         password: f.get('password'),
                       },
                     });
@@ -393,21 +394,35 @@ export function SignIn() {
               }}
             >
               {mode === 'accept' && (
-                <label className="form-field">
-                  <span>Full name</span>
-                  <input name="full_name" required autoComplete="name" />
-                </label>
+                <>
+                  <label className="form-field">
+                    <span>Full name</span>
+                    <input name="full_name" required autoComplete="name" />
+                  </label>
+                  <label className="form-field">
+                    <span>Username (optional)</span>
+                    <input
+                      name="username"
+                      autoComplete="username"
+                      minLength={3}
+                      maxLength={32}
+                      placeholder="e.g. declareola"
+                    />
+                  </label>
+                </>
               )}
               <label className="form-field">
-                <span>Email address</span>
+                <span>{mode === 'accept' ? 'Email address' : 'Username or email'}</span>
                 <input
-                  name="email"
-                  type="email"
+                  name={mode === 'accept' ? 'email' : 'identifier'}
+                  type={mode === 'accept' ? 'email' : 'text'}
                   required
-                  autoComplete="email"
+                  autoComplete={mode === 'accept' ? 'email' : 'username'}
                   readOnly={mode === 'accept'}
                   placeholder={
-                    mode === 'accept' ? 'Email bound to invitation' : 'you@organisation.org'
+                    mode === 'accept'
+                      ? 'Email bound to invitation'
+                      : 'declareola or you@organisation.org'
                   }
                 />
               </label>

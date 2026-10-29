@@ -14,7 +14,7 @@ const lines = [
   '| Table | Purpose | Key fields |',
   '|---|---|---|',
   '| organisations | Tenant boundary and demo marker | id, name, is_demo, settings |',
-  '| user_profiles | Account identity; password hash never exposed to app role | id, email, full_name, password_hash, is_platform_admin, preferences |',
+  '| user_profiles | Account identity; password hash never exposed to app role | id, email, username, full_name, password_hash, is_platform_admin, preferences |',
   '| organisation_memberships | Organisation role | organisation_id, user_id, role; unique membership |',
   '| projects | Decision workspace | organisation_id, title, sector, countries, settings, created_by |',
   '| project_memberships | Project role override | project_id, user_id, role; unique membership |',
