@@ -49,7 +49,8 @@ export function can(role: Role | undefined, permission: Permission) {
 }
 export interface UserProfile {
   id: string;
-  email: string;
+  email: string | null;
+  username?: string | null;
   full_name: string;
   is_platform_admin: boolean;
 }

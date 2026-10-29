@@ -3,7 +3,7 @@ import request from 'supertest';
 import type { Express } from 'express';
 import { createDatabase, type Database } from '../../server/db';
 import { createApp } from '../../server/app';
-import { seedDemo, insert, demoUserId } from '../../server/seed';
+import { seedDemo, insert, demoUserId, bootstrapAdmin } from '../../server/seed';
 import { DEMO_PROJECTS, DEMO_ORG } from '../../shared/domain';
 let db: Database, app: Express;
 const agents: Record<string, ReturnType<typeof request.agent>> = {};
@@ -34,6 +34,54 @@ afterAll(async () => {
   await db?.close();
 });
 describe('authenticated API and database isolation', () => {
+  it('bootstraps and signs in with a username, case-insensitively', async () => {
+    await bootstrapAdmin(db, { username: 'TestUser' }, 'A-long-test-password-2026');
+    const agent = request.agent(app);
+    await agent
+      .post(path('/auth/login'))
+      .set('X-AfriScope-Request', '1')
+      .send({ identifier: 'testuser', password: 'A-long-test-password-2026' })
+      .expect(200);
+    const w = await agent.get(path('/workspace')).expect(200);
+    expect(w.body.user.username).toBe('testuser');
+    expect(w.body.user.email).toBeNull();
+    await agent
+      .post(path('/auth/login'))
+      .set('X-AfriScope-Request', '1')
+      .send({ identifier: 'TESTUSER', password: 'wrong-password' })
+      .expect(401);
+    await expect(
+      bootstrapAdmin(db, { username: 'testuser' }, 'Another-long-password-2026'),
+    ).rejects.toThrow('Username already exists');
+  });
+  it('still supports email login and optional invitation username', async () => {
+    await bootstrapAdmin(db, { email: 'EmailUser@example.test' }, 'A-long-test-password-2026');
+    await request(app)
+      .post(path('/auth/login'))
+      .set('X-AfriScope-Request', '1')
+      .send({ email: 'emailuser@example.test', password: 'A-long-test-password-2026' })
+      .expect(200);
+    const r = await post('organisation_admin', '/projects/' + med + '/invitations', {
+      email: 'invite-username@example.test',
+      role: 'reviewer',
+    }).expect(201);
+    const token = new URL('http://localhost' + r.body.path).searchParams.get('token');
+    await request(app)
+      .post(path('/auth/accept-invite'))
+      .set('X-AfriScope-Request', '1')
+      .send({
+        token,
+        full_name: 'Invite username',
+        username: 'inviteuser',
+        password: 'A-long-test-password-2026',
+      })
+      .expect(201);
+    await request(app)
+      .post(path('/auth/login'))
+      .set('X-AfriScope-Request', '1')
+      .send({ identifier: 'inviteuser', password: 'A-long-test-password-2026' })
+      .expect(200);
+  });
   it('health is public but workspace requires authentication', async () => {
     await request(app).get(path('/health')).expect(200);
     await request(app).get(path('/workspace')).expect(401);

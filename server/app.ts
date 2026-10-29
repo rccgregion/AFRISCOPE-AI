@@ -32,18 +32,25 @@ import {
   requiredFields,
   validateRows,
   qualityReport,
+  username,
   type RawRow,
 } from './validation';
 import { explain } from './assistant';
 
 type Authed = Request & {
-  user: { id: string; email: string; full_name: string; is_platform_admin: boolean };
+  user: {
+    id: string;
+    email: string | null;
+    username?: string | null;
+    full_name: string;
+    is_platform_admin: boolean;
+  };
   sessionHash: string;
 };
 
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 const cookieName = 'afriscope_session';
-const safeUser = 'id,email,full_name,is_platform_admin,preferences';
+const safeUser = 'id,email,username,full_name,is_platform_admin,preferences';
 const asyncRoute =
   (fn: (req: Request, res: Response) => Promise<unknown>) =>
   (req: Request, res: Response, next: NextFunction) => {
@@ -104,7 +111,7 @@ export function createApp(db: Database) {
       const record = (
         await db.admin((c) =>
           c.query(
-            `select u.id,u.email,u.full_name,u.is_platform_admin,u.preferences,s.token_hash from auth_sessions s join user_profiles u on u.id=s.user_id where s.token_hash=$1 and s.expires_at>now()`,
+            `select u.id,u.email,u.username,u.full_name,u.is_platform_admin,u.preferences,s.token_hash from auth_sessions s join user_profiles u on u.id=s.user_id where s.token_hash=$1 and s.expires_at>now()`,
             [hash(token)],
           ),
         )
@@ -180,10 +187,16 @@ export function createApp(db: Database) {
     'post',
     '/auth/login',
     async (req, res) => {
-      const { email, password } = z
-        .object({ email: z.string().email().max(254), password: z.string().min(1).max(256) })
+      const input = z
+        .object({
+          identifier: z.string().trim().min(1).max(254).optional(),
+          email: z.string().trim().email().max(254).optional(),
+          password: z.string().min(1).max(256),
+        })
+        .refine((v) => !!(v.identifier || v.email), 'Provide a username or email')
         .parse(req.body);
-      const key = hash(email.toLowerCase());
+      const identifier = (input.identifier || input.email || '').toLowerCase();
+      const key = hash(identifier);
       const ok = await db.admin(async (c) => {
         const t = (await c.query('select * from auth_throttle where key=$1', [key])).rows[0];
         if (t && Number(t.attempts) >= 8 && new Date(String(t.reset_at)) > new Date())
@@ -193,13 +206,16 @@ export function createApp(db: Database) {
           [key],
         );
         const u = (
-          await c.query('select * from user_profiles where email=$1', [email.toLowerCase()])
+          await c.query(
+            'select * from user_profiles where lower(email)= $1 or lower(username)= $1',
+            [identifier],
+          )
         ).rows[0];
         const stored = String(
           u?.password_hash || 'scrypt:00000000000000000000000000000000:' + '0'.repeat(128),
         );
         const [_, salt, hex] = stored.split(':');
-        const actual = scryptSync(password, salt, 64),
+        const actual = scryptSync(input.password, salt, 64),
           expected = Buffer.from(hex, 'hex');
         if (
           !u?.password_hash ||
@@ -210,7 +226,7 @@ export function createApp(db: Database) {
         await c.query('delete from auth_throttle where key=$1', [key]);
         return u;
       });
-      if (!ok) throw httpError(401, 'Email or password is incorrect');
+      if (!ok) throw httpError(401, 'Username/email or password is incorrect');
       await session(req, res, String(ok.id));
       res.json({ ok: true });
     },
@@ -325,7 +341,7 @@ export function createApp(db: Database) {
       output.my_role = (await one(c, 'select project_role($1) as role', [id])).role;
       output.members = (
         await c.query(
-          'select pm.id,pm.user_id,pm.role,u.full_name,u.email from project_memberships pm join user_profiles u on u.id=pm.user_id where pm.project_id=$1',
+          'select pm.id,pm.user_id,pm.role,u.full_name,u.email,u.username from project_memberships pm join user_profiles u on u.id=pm.user_id where pm.project_id=$1',
           [id],
         )
       ).rows;
@@ -1359,6 +1375,7 @@ export function createApp(db: Database) {
         .object({
           token: z.string().min(20).max(100),
           full_name: text.max(120),
+          username: username.optional(),
           password: z.string().min(12).max(256),
         })
         .parse(req.body);
@@ -1370,11 +1387,24 @@ export function createApp(db: Database) {
           )
         ).rows[0];
         if (!i) throw httpError(400, 'Invitation is invalid or expired');
-        if ((await c.query('select id from user_profiles where email=$1', [i.email])).rows.length)
+        if (
+          (await c.query('select id from user_profiles where lower(email)= $1', [i.email])).rows
+            .length
+        )
           throw httpError(400, 'An account already exists for this invitation');
+        if (
+          input.username &&
+          (
+            await c.query('select id from user_profiles where lower(username)= $1', [
+              input.username,
+            ])
+          ).rows.length
+        )
+          throw httpError(400, 'Username already exists');
         const salt = randomBytes(16).toString('hex');
         const u = await insert(c, 'user_profiles', {
           email: i.email,
+          username: input.username || null,
           full_name: input.full_name,
           password_hash: `scrypt:${salt}:${scryptSync(input.password, salt, 64).toString('hex')}`,
         });

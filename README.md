@@ -72,7 +72,7 @@ Details and limitations: [MODEL_EVALUATION](docs/MODEL_EVALUATION.md), [AI_EVALU
 
 ## Data, migrations, and reset
 
-Six forward migrations live in `supabase/migrations/`; the database applies them automatically on startup. `npm run db:migrate` applies them explicitly. `npm run db:seed` seeds the demo, or bootstraps a private admin when `ADMIN_EMAIL` and `ADMIN_PASSWORD` are supplied. `npm run data:generate` regenerates 12 fixed-seed CSVs (seed 20260930).
+Seven forward migrations live in `supabase/migrations/`; the database applies them automatically on startup. `npm run db:migrate` applies them explicitly. `npm run db:seed` seeds the demo, or bootstraps a private admin when `ADMIN_PASSWORD` and `ADMIN_USERNAME` or `ADMIN_EMAIL` are supplied. Sign-in accepts a username or email plus password. `npm run data:generate` regenerates 12 fixed-seed CSVs (seed 20260930).
 
 Reset only the synthetic organisation:
 
@@ -84,7 +84,7 @@ In Settings, a demo organisation administrator can type `RESET`. For CLI reset, 
 
 ## Configuration
 
-See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
+See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
 
 ## Documentation
 
