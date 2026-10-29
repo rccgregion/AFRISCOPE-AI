@@ -1,0 +1,5 @@
+external_id,programme_code,programme_name,funding_source,currency,period,amount,geography
+BUD-1,PRG-001,Essential medicines continuity,Synthetic development fund,NGN,2026-Q3,120000000,District 1
+BUD-2,PRG-002,Primary care outreach,Synthetic development fund,NGN,2026-Q3,85000000,District 2
+BUD-3,PRG-003,District cold-chain strengthening,Synthetic development fund,KES,2026-Q3,16000000,District 4
+BUD-4,PRG-004,Community health worker training,Synthetic development fund,KES,2026-Q3,12000000,District 5

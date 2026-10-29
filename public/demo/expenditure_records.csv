@@ -1,0 +1,14 @@
+external_id,programme_code,budget_id,event_type,currency,amount,transaction_date,period,reference,description
+EXP-1-1,PRG-001,BUD-1,Commitment,NGN,30000000,2026-08-31,2026-Q3,PO-1,Purchase order commitment
+EXP-1-2,PRG-001,BUD-1,Payment,NGN,18000000,2026-09-08,2026-Q3,PO-1,Supplier payment
+EXP-1-3,PRG-001,BUD-1,Expenditure,NGN,14400000,2026-09-16,2026-Q3,PO-1,Recognised expenditure
+EXP-2-1,PRG-002,BUD-2,Commitment,NGN,21250000,2026-08-31,2026-Q3,PO-2,Purchase order commitment
+EXP-2-2,PRG-002,BUD-2,Payment,NGN,12750000,2026-09-08,2026-Q3,PO-2,Supplier payment
+EXP-2-3,PRG-002,BUD-2,Expenditure,NGN,10200000,2026-09-16,2026-Q3,PO-2,Recognised expenditure
+EXP-3-1,PRG-003,BUD-3,Commitment,KES,4000000,2026-08-31,2026-Q3,PO-3,Purchase order commitment
+EXP-3-2,PRG-003,BUD-3,Payment,KES,2400000,2026-09-08,2026-Q3,PO-3,Supplier payment
+EXP-3-3,PRG-003,BUD-3,Expenditure,KES,1920000,2026-09-16,2026-Q3,PO-3,Recognised expenditure
+EXP-4-1,PRG-004,BUD-4,Commitment,KES,3000000,2026-08-31,2026-Q3,PO-4,Purchase order commitment
+EXP-4-2,PRG-004,BUD-4,Payment,KES,1800000,2026-09-08,2026-Q3,PO-4,Supplier payment
+EXP-4-3,PRG-004,BUD-4,Expenditure,KES,1440000,2026-09-16,2026-Q3,PO-4,Recognised expenditure
+EXP-UNMATCHED,PRG-UNKNOWN,,Payment,NGN,1750000,2026-09-30,2026-Q3,MISSING-PO,Synthetic unmatched payment for reconciliation testing

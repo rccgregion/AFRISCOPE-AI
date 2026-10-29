@@ -1,0 +1,4 @@
+name,budget,equity_minimum,max_months,required_geographies
+Essential coverage,90000,2,4,"[""Northern Zone"", ""Central Zone""]"
+Balanced scale-up,160000,2,4,"[""Northern Zone"", ""Central Zone""]"
+Expanded delivery,230000,2,4,"[""Northern Zone"", ""Central Zone""]"

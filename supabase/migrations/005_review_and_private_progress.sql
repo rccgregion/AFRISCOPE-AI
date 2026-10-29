@@ -1,0 +1,10 @@
+create policy recommendations_review_update on recommendations for update using(project_permission(project_id,'approve')) with check(project_permission(project_id,'approve'));
+create policy recommendations_operate_update on recommendations for update using(project_permission(project_id,'operate')) with check(project_permission(project_id,'operate'));
+drop policy learning_progress_read on learning_progress;
+create policy learning_progress_read on learning_progress for select using(project_permission(project_id,'read') and user_id=app_uid());
+drop policy notifications_read on notifications;
+create policy notifications_read on notifications for select using(project_permission(project_id,'read') and user_id=app_uid());
+drop policy audit_logs_insert on audit_logs;
+create policy audit_logs_insert on audit_logs for insert with check(project_permission(project_id,'read') and actor_id=app_uid() and created_by=app_uid());
+drop policy approvals_insert on approvals;
+create policy approvals_insert on approvals for insert with check(project_permission(project_id,'approve') and reviewer_id=app_uid() and created_by=app_uid());
