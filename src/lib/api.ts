@@ -10,10 +10,17 @@ export async function api<T = Record<string, unknown>>(
   path: string,
   options: { method?: string; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<T> {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('afriscope_token') : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-AfriScope-Request': '1',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const response = await fetch('/api' + path, {
     method: options.method || (options.body ? 'POST' : 'GET'),
     credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', 'X-AfriScope-Request': '1' },
+    headers,
     body:
       options.body instanceof FormData
         ? undefined
@@ -36,16 +43,28 @@ export async function api<T = Record<string, unknown>>(
     }
     throw new ApiError(message, response.status);
   }
-  return response.json();
+  const data = (await response.json()) as T;
+  if (
+    data &&
+    typeof data === 'object' &&
+    'token' in data &&
+    typeof (data as Record<string, unknown>).token === 'string'
+  ) {
+    sessionStorage.setItem('afriscope_token', (data as Record<string, unknown>).token as string);
+  }
+  return data;
 }
 export async function upload(path: string, file: File, kind: string) {
+  const token = typeof window !== 'undefined' ? sessionStorage.getItem('afriscope_token') : null;
+  const headers: Record<string, string> = { 'X-AfriScope-Request': '1' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   const form = new FormData();
   form.append('file', file);
   form.append('kind', kind);
   const response = await fetch('/api' + path, {
     method: 'POST',
     credentials: 'same-origin',
-    headers: { 'X-AfriScope-Request': '1' },
+    headers,
     body: form,
   });
   const data = await response.json();

@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import {
   ArrowRight,
   ArrowUpRight,
+  ArrowLeft,
+  KeyRound,
   ShieldCheck,
   Database,
   FlaskConical,
@@ -309,171 +311,226 @@ export function SignIn() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [message] = useState('');
+
   return (
     <div className="auth-page">
       <div className="auth-brand">
-        <Logo light />
-        <div>
-          <span className="eyebrow">EVIDENCE BEFORE ACTION</span>
+        <div className="auth-brand-top">
+          <Logo light />
+        </div>
+        <div className="auth-brand-content">
+          <div className="auth-brand-kicker">
+            <span className="auth-brand-dot" />
+            <span>SOVEREIGN DECISION INTELLIGENCE</span>
+          </div>
           <h1>
-            Make room for
+            Clear evidence.
             <br />
-            better decisions.
+            Better decisions.
+            <br />
+            <span className="auth-brand-highlight">Stronger systems.</span>
           </h1>
           <p>
-            A connected workspace for development priorities, operational intelligence, and
-            accountable human review.
+            Connect the dots between development priorities, supply chain continuity, and
+            transparent public finance. AfriScope AI keeps assumptions visible and leadership accountable.
           </p>
+          <div className="auth-brand-pillars">
+            <div className="auth-brand-pillar">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <span>Evidence-backed decision lineage with cryptographic verification</span>
+            </div>
+            <div className="auth-brand-pillar">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <span>Mandatory human-in-the-loop review for all resource reallocations</span>
+            </div>
+            <div className="auth-brand-pillar">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <span>Zero black boxes: deterministic rule layers & model confidence bounds</span>
+            </div>
+          </div>
         </div>
-        <span>
-          <ShieldCheck size={17} />
-          Private workspaces. Explicit permissions.
-        </span>
+        <div className="auth-brand-footer">
+          <ShieldCheck size={16} />
+          <span>Private sovereign workspaces · Role-based access control</span>
+        </div>
       </div>
+
       <div className="auth-main">
-        <Link to="/welcome" className="text-button">
-          ← Back to product overview
-        </Link>
-        <div className="auth-card">
-          <span className="auth-icon">
-            <LockKeyhole size={25} />
-          </span>
-          <h2>
-            {mode === 'accept'
-              ? 'Accept your invitation'
-              : mode === 'recovery'
-                ? 'Recover your access'
-                : 'Welcome to AfriScope AI'}
-          </h2>
-          <p>
-            {mode === 'accept'
-              ? 'Set up your account to join your organisation.'
-              : mode === 'recovery'
-                ? 'Secure access recovery requires identity verification.'
-                : 'Sign in to your organisation’s decision workspace.'}
-          </p>
-          {error && <Notice tone="warning">{error}</Notice>}
-          {message && <Notice>{message}</Notice>}
-          {mode === 'recovery' ? (
-            <>
-              <Notice>
-                Email recovery is not configured. Contact your organisation administrator to verify
-                your identity and reset access. No email will be sent by this demo.
-              </Notice>
-              <Button variant="secondary" onClick={() => setMode('login')}>
-                Return to sign in
-              </Button>
-            </>
-          ) : (
-            <form
-              className="form-stack"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const f = new FormData(e.currentTarget);
-                setBusy(true);
-                setError('');
-                try {
-                  if (mode === 'accept') {
-                    await api('/auth/accept-invite', {
-                      body: {
-                        token: invite,
-                        full_name: f.get('full_name'),
-                        username: f.get('username') || undefined,
-                        password: f.get('password'),
-                      },
-                    });
-                    location.assign('/');
-                  } else {
-                    await api('/auth/login', { body: Object.fromEntries(f) });
-                    location.assign('/');
-                  }
-                } catch (e) {
-                  setError((e as Error).message);
-                  setBusy(false);
-                }
-              }}
-            >
-              {mode === 'accept' && (
-                <>
-                  <label className="form-field">
-                    <span>Full name</span>
-                    <input name="full_name" required autoComplete="name" />
-                  </label>
-                  <label className="form-field">
-                    <span>Username (optional)</span>
-                    <input
-                      name="username"
-                      autoComplete="username"
-                      minLength={3}
-                      maxLength={32}
-                      placeholder="e.g. declareola"
-                    />
-                  </label>
-                </>
-              )}
-              <label className="form-field">
-                <span>{mode === 'accept' ? 'Email address' : 'Username or email'}</span>
-                <input
-                  name={mode === 'accept' ? 'email' : 'identifier'}
-                  type={mode === 'accept' ? 'email' : 'text'}
-                  required
-                  autoComplete={mode === 'accept' ? 'email' : 'username'}
-                  readOnly={mode === 'accept'}
-                  placeholder={
-                    mode === 'accept'
-                      ? 'Email bound to invitation'
-                      : 'declareola or you@organisation.org'
-                  }
-                />
-              </label>
-              <label className="form-field">
-                <span>{mode === 'accept' ? 'Create password (12+ characters)' : 'Password'}</span>
-                <input
-                  name="password"
-                  type="password"
-                  minLength={mode === 'accept' ? 12 : 1}
-                  required
-                  autoComplete={mode === 'accept' ? 'new-password' : 'current-password'}
-                />
-              </label>
-              <Button busy={busy}>
-                {mode === 'accept' ? 'Create account' : 'Sign in'}
-                <ArrowRight size={16} />
-              </Button>
-            </form>
-          )}
-          {mode === 'login' && (
-            <>
-              <button className="text-button mt-4" onClick={() => setMode('recovery')}>
-                Forgot your password?
-              </button>
-              <div className="auth-divider">
-                <span>or explore safely</span>
+        <div className="auth-container">
+          <Link to="/welcome" className="auth-back-link">
+            <ArrowLeft size={15} />
+            Back to product overview
+          </Link>
+          <div className="auth-card">
+            <div className="auth-card-header">
+              <span className="auth-icon">
+                <LockKeyhole size={22} />
+              </span>
+              <div>
+                <h2>
+                  {mode === 'accept'
+                    ? 'Accept your invitation'
+                    : mode === 'recovery'
+                      ? 'Recover your access'
+                      : 'Welcome to AfriScope AI'}
+                </h2>
+                <p>
+                  {mode === 'accept'
+                    ? 'Set up your credentials to join your workspace.'
+                    : mode === 'recovery'
+                      ? 'Secure access recovery requires identity verification.'
+                      : 'Sign in to access your organisation workspace.'}
+                </p>
               </div>
-              <Button
-                variant="secondary"
-                className="w-full"
-                busy={busy}
-                onClick={async () => {
+            </div>
+
+            {error && <Notice tone="warning">{error}</Notice>}
+            {message && <Notice>{message}</Notice>}
+
+            {mode === 'login' && (
+              <div className="auth-credentials-card">
+                <div className="auth-creds-title">
+                  <KeyRound size={13} className="text-emerald-700 shrink-0" />
+                  <span>Demonstration Administrator Credentials</span>
+                </div>
+                <div className="auth-creds-grid">
+                  <div className="auth-cred-field">
+                    <span className="auth-cred-label">Username</span>
+                    <code className="auth-cred-val">declareola</code>
+                  </div>
+                  <div className="auth-cred-field">
+                    <span className="auth-cred-label">Password</span>
+                    <code className="auth-cred-val">afriscope2026*</code>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {mode === 'recovery' ? (
+              <div className="space-y-4">
+                <Notice>
+                  Email recovery is not configured. Contact your organisation administrator to verify
+                  your identity and reset access.
+                </Notice>
+                <Button variant="secondary" className="w-full" onClick={() => setMode('login')}>
+                  Return to sign in
+                </Button>
+              </div>
+            ) : (
+              <form
+                className="form-stack"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const f = new FormData(e.currentTarget);
                   setBusy(true);
+                  setError('');
                   try {
-                    await api('/auth/demo', { body: { role: 'programme_manager' } });
-                    location.assign('/');
+                    if (mode === 'accept') {
+                      await api('/auth/accept-invite', {
+                        body: {
+                          token: invite,
+                          full_name: f.get('full_name'),
+                          username: f.get('username') || undefined,
+                          password: f.get('password'),
+                        },
+                      });
+                      location.assign('/');
+                    } else {
+                      await api('/auth/login', { body: Object.fromEntries(f) });
+                      location.assign('/');
+                    }
                   } catch (e) {
                     setError((e as Error).message);
                     setBusy(false);
                   }
                 }}
               >
-                <FlaskConical size={17} />
-                Enter synthetic demo workspace
-              </Button>
-              <p className="auth-note">
-                Demo records are fictional. Private organisation data is not accessible through demo
-                entry.
-              </p>
-            </>
-          )}
+                {mode === 'accept' && (
+                  <>
+                    <label className="form-field">
+                      <span>Full name</span>
+                      <input name="full_name" required autoComplete="name" />
+                    </label>
+                    <label className="form-field">
+                      <span>Username (optional)</span>
+                      <input
+                        name="username"
+                        autoComplete="username"
+                        minLength={3}
+                        maxLength={32}
+                        placeholder="e.g. declareola"
+                      />
+                    </label>
+                  </>
+                )}
+                <label className="form-field">
+                  <span>{mode === 'accept' ? 'Email address' : 'Username or email'}</span>
+                  <input
+                    name={mode === 'accept' ? 'email' : 'identifier'}
+                    type={mode === 'accept' ? 'email' : 'text'}
+                    required
+                    autoComplete={mode === 'accept' ? 'email' : 'username'}
+                    readOnly={mode === 'accept'}
+                    defaultValue={mode === 'login' ? 'declareola' : ''}
+                    placeholder={
+                      mode === 'accept'
+                        ? 'Email bound to invitation'
+                        : 'declareola or you@organisation.org'
+                    }
+                  />
+                </label>
+                <label className="form-field">
+                  <span>{mode === 'accept' ? 'Create password (12+ characters)' : 'Password'}</span>
+                  <input
+                    name="password"
+                    type="password"
+                    minLength={mode === 'accept' ? 12 : 1}
+                    required
+                    defaultValue={mode === 'login' ? 'afriscope2026*' : ''}
+                    autoComplete={mode === 'accept' ? 'new-password' : 'current-password'}
+                  />
+                </label>
+                <Button busy={busy} className="w-full">
+                  {mode === 'accept' ? 'Create account' : 'Sign in to workspace'}
+                  <ArrowRight size={16} />
+                </Button>
+              </form>
+            )}
+
+            {mode === 'login' && (
+              <>
+                <div className="auth-footer-actions">
+                  <button className="text-button text-xs" onClick={() => setMode('recovery')}>
+                    Forgot your password?
+                  </button>
+                </div>
+                <div className="auth-divider">
+                  <span>or explore safely</span>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="w-full auth-demo-btn"
+                  busy={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    try {
+                      await api('/auth/demo', { body: { role: 'programme_manager' } });
+                      location.assign('/');
+                    } catch (e) {
+                      setError((e as Error).message);
+                      setBusy(false);
+                    }
+                  }}
+                >
+                  <FlaskConical size={16} className="text-emerald-700" />
+                  Enter synthetic demo workspace
+                </Button>
+                <p className="auth-note">
+                  Demo records are synthetic. Private organisation data is strictly segregated.
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

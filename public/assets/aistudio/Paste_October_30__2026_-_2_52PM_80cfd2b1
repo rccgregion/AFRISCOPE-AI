@@ -1,0 +1,1783 @@
+```
+# MEGA BUILD PROMPT: AFRISCOPE AI
+## AI Decision Intelligence for African Development Systems
+
+### 1. YOUR ROLE AND MISSION
+
+Act as a complete senior product and engineering team consisting of:
+
+- Principal software architect
+- Senior full-stack engineer
+- AI and machine learning engineer
+- Data engineer and analytics specialist
+- Public health and supply-chain systems analyst
+- Public finance and programme management specialist
+- Product strategist and UX researcher
+- Senior UI/UX designer
+- Responsible AI and data privacy specialist
+- Software quality assurance engineer
+- Technical writer and developer advocate
+
+Your mission is to design, build, test, document, and prepare for deployment a functional web application named AfriScope AI.
+
+AfriScope AI is an AI-powered decision-support platform for African development systems. It serves government teams, public health agencies, development partners, programme managers, researchers, and implementation teams.
+
+Do not deliver only a landing page, static dashboard, clickable prototype, or collection of disconnected screens. Build a coherent application with working navigation, data flows, analytical logic, meaningful interactions, persistent records, validation, realistic demonstration data, and automated tests.
+
+Use your available development tools to implement the application directly. Make sensible engineering decisions without repeatedly asking for approval. When a decision depends on unavailable credentials, external services, real datasets, or permissions, implement a safe, clearly documented alternative.
+
+Do not claim a feature works unless its underlying implementation supports the claim.
+
+### 2. PRODUCT VISION
+
+Product name: AfriScope AI
+
+Product category: AI decision intelligence, public-sector analytics, and development programme management.
+
+Core promise: Help development teams identify priority problems, analyse evidence, evaluate interventions, detect operational bottlenecks, and make transparent, data-backed decisions.
+
+The platform must help users answer five questions:
+
+1. What problem needs attention first?
+2. What does the available data tell us?
+3. Which intervention offers the strongest results within the available budget?
+4. Where are funds, medicines, or implementation activities getting delayed?
+5. What evidence supports each recommended action?
+
+The platform combines conventional analytics, statistical forecasting, optimisation, large language models, structured workflows, and human decision-making.
+
+Apply this architectural rule throughout the application:
+
+- Use deterministic code for arithmetic, financial calculations, data transformations, constraints, validation, and risk rules.
+- Use statistical models for forecasts and predictive estimates.
+- Use optimisation algorithms for constrained allocation and intervention selection.
+- Use LLMs for natural-language interaction, document analysis, summarisation, hypothesis generation, and explanations grounded in validated evidence.
+- Require human review for consequential operational decisions.
+
+Never allow an LLM to invent data, fabricate citations, silently alter numerical results, or independently execute high-impact decisions.
+
+### 3. PRODUCT POSITIONING AND USERS
+
+Primary users:
+
+- Government programme managers
+- Public health officials
+- Health facility and supply-chain managers
+- Public finance and budget analysts
+- Development programme officers
+- Monitoring, evaluation, and learning specialists
+- Data analysts and researchers
+- AI project leads
+- NGO and development partner teams
+- Programme sponsors and senior decision-makers
+
+Define the following roles and permissions:
+
+1. Platform administrator
+2. Organisation administrator
+3. Programme manager
+4. Data analyst
+5. Programme or facility operator
+6. Reviewer and approver
+7. Read-only executive or stakeholder
+
+Implement role-based access control. Scope records to the appropriate organisation and project. Do not assume hiding a button provides adequate security. Enforce permissions on the server and database.
+
+### 4. DESIGN AND TECHNOLOGY DIRECTION
+
+Build a premium enterprise application with the usability and design discipline associated with leading analytical software products.
+
+The visual language should communicate institutional trust, technical competence, transparency, and practical utility.
+
+Design principles:
+
+- Clear information hierarchy
+- Restrained colour palette
+- Strong typography
+- High information density without clutter
+- Generous spacing
+- Consistent alignment
+- Accessible contrast
+- Readable tables and charts
+- Useful empty states
+- Clear error messages
+- Responsive layouts
+- Minimal decorative animation
+- Fast access to important operational information
+
+Suggested visual system:
+
+- Deep forest green for primary brand elements
+- Warm off-white or neutral backgrounds
+- Charcoal text
+- Muted green for secondary accents
+- Amber for attention and caution
+- Red for critical risks
+- Blue for informational states
+
+Use colour alongside text, icons, and other indicators. Never communicate risk using colour alone.
+
+Use a consistent design system with documented typography, spacing, radii, shadows, colour tokens, component states, and interaction patterns.
+
+Avoid generic AI gradients, oversized marketing headlines inside operational screens, unnecessary glassmorphism, excessive rounded cards, random charts, meaningless metrics, and decorative maps.
+
+Create an original AfriScope AI wordmark treatment using typography and a simple, professional symbol related to evidence, connected systems, or decision intelligence. Do not imitate third-party logos.
+
+#### Recommended technology stack
+
+Use the following stack where supported by the environment:
+
+- Frontend: React, TypeScript, Vite
+- Styling: Tailwind CSS
+- Components: accessible, reusable UI components
+- Icons: Lucide
+- Charts: Recharts or an equivalent established charting library
+- Backend and database: Supabase with PostgreSQL
+- Authentication: Supabase Auth or a secure equivalent
+- Server-side operations: Supabase Edge Functions or a suitable backend service
+- Data analysis and modelling: Python, pandas, scikit-learn, and statsmodels where a Python execution environment is available
+- LLM integration: a server-side API integration supporting structured outputs and tool calling
+- Validation: Zod or an equivalent schema validation library
+- Testing: Vitest, React Testing Library, and Playwright where supported
+- Version control: Git and GitHub
+
+If the builder environment does not support part of the stack, select the closest compatible alternative and document the decision.
+
+Do not introduce a complicated microservices architecture for the MVP. Prefer a modular monolith with well-defined domain boundaries.
+
+Keep secrets out of client-side code. Use environment variables and server-side functions for protected integrations.
+
+### 5. INFORMATION ARCHITECTURE
+
+Build the following primary navigation structure.
+
+Global navigation:
+
+- Overview
+- Problem Scoping
+- Experiment Lab
+- Data Intelligence
+- Programme Operations
+- Intervention Planner
+- Learning Academy
+- Responsible AI
+- Reports and Documents
+- Projects and Workspaces
+- Administration
+- Settings
+
+Use a collapsible left sidebar on desktop, a compact mobile navigation pattern, and a persistent global header.
+
+The global header must include:
+
+- AfriScope AI logo
+- Current organisation
+- Current project or workspace
+- Search
+- Notifications
+- Help and documentation
+- User profile and account settings
+
+Add contextual breadcrumbs to nested pages.
+
+Provide a global command or search interface for locating projects, datasets, reports, experiments, alerts, and learning resources. Do not expose records the current user lacks permission to view.
+
+### 6. MODULE ONE: PROBLEM SCOPING STUDIO
+
+Purpose: Turn broad development challenges into well-defined, testable, evidence-based AI projects.
+
+Create a guided project intake wizard with the following stages.
+
+Stage A. Problem definition
+
+Fields:
+
+- Project title
+- Problem statement
+- Country or countries
+- Region, state, district, or facility where relevant
+- Sector
+- Affected population
+- Current workflow
+- Existing intervention
+- Current pain points
+- Urgency
+- Expected users
+- Project sponsor
+- Project owner
+
+Stage B. Root-cause analysis
+
+Support:
+
+- Five Whys
+- Cause-and-effect analysis
+- Stakeholder mapping
+- Workflow mapping
+- Bottleneck identification
+- Existing process documentation
+- Known constraints
+- Competing explanations
+
+Stage C. Evidence and data inventory
+
+Capture:
+
+- Available datasets
+- Data owner
+- Source system
+- Collection frequency
+- Geographic coverage
+- Time coverage
+- Format
+- Approximate volume
+- Missingness
+- Quality limitations
+- Data access restrictions
+- Consent and lawful-use considerations
+- Data sharing requirements
+
+Stage D. Solution assessment
+
+Evaluate whether the problem is best addressed through:
+
+- Conventional software
+- Rules-based automation
+- Descriptive analytics
+- Statistical forecasting
+- Machine learning
+- LLM-assisted workflows
+- Mathematical optimisation
+- A combination of methods
+- No AI intervention
+
+Do not recommend AI when simpler methods adequately solve the problem.
+
+Stage E. Evaluation and delivery plan
+
+Define:
+
+- Baseline performance
+- Intended outcome
+- Key performance indicators
+- Evaluation method
+- Required data
+- Technical dependencies
+- Operational dependencies
+- Risks and mitigations
+- Delivery milestones
+- Estimated resource requirements
+- Acceptance criteria
+
+Generate a structured problem brief, solution hypothesis, requirements document, data inventory, evaluation plan, risk register, and initial project roadmap.
+
+Allow users to edit, approve, version, and export each document.
+
+AI-generated documents must identify assumptions and missing information. Mark unverified claims as requiring confirmation.
+
+### 7. MODULE TWO: AI EXPERIMENT LAB
+
+Purpose: Enable rapid, reproducible experimentation with LLMs, analytical methods, and predictive models.
+
+Create an experiment workspace containing:
+
+- Experiment name and objective
+- Hypothesis
+- Project association
+- Dataset version
+- Model or method
+- Model version
+- Prompt template where applicable
+- Configuration parameters
+- Evaluation dataset
+- Evaluation criteria
+- Expected outcome
+- Actual outcome
+- Failure cases
+- Cost and latency measurements where available
+- Researcher or experiment owner
+- Execution timestamp
+- Status
+- Conclusions
+- Next steps
+
+Implement experiment statuses:
+
+Draft, Ready, Running, Completed, Failed, Archived.
+
+Features:
+
+1. Compare multiple prompts or analytical approaches.
+2. Compare a deterministic baseline with an AI-assisted approach.
+3. Save experiment configurations.
+4. Record individual test cases and outputs.
+5. Track model and dataset versions.
+6. Calculate evaluation metrics using application code.
+7. Display failure examples.
+8. Record limitations and unresolved questions.
+9. Generate an experiment report.
+10. Recommend whether to continue, revise, or stop an experiment.
+
+Use background execution if supported. Otherwise implement an honest synchronous execution workflow.
+
+Never display fabricated model execution results, fabricated latency, or invented costs as measured results.
+
+Include a reproducible experiment using the demonstration dataset.
+
+### 8. MODULE THREE: DATA AND DECISION INTELLIGENCE
+
+Purpose: Convert fragmented operational data into trustworthy analytical evidence.
+
+Create a central data workspace with the following features.
+
+#### Data ingestion
+
+Support CSV and Excel uploads, subject to environment capabilities.
+
+Implement:
+
+- File type and size validation
+- Schema detection
+- Column mapping
+- Data preview
+- Data type inference
+- Date parsing
+- Unit and currency checks
+- Duplicate detection
+- Missing-value analysis
+- Range validation
+- Referential integrity checks
+- Import history
+- Rejection reports
+- Downloadable validation results
+
+Allow users to map unfamiliar source columns to standard data fields.
+
+Never silently discard rejected records. Report what was rejected, why, and how the user should resolve the issue.
+
+#### Data catalogue
+
+Each dataset should have:
+
+- Dataset name
+- Description
+- Source
+- Owner
+- Project
+- Date created
+- Date imported
+- Reporting period
+- Geographic coverage
+- Schema version
+- Data sensitivity classification
+- Quality status
+- Data lineage
+- Access permissions
+
+#### Analytics workspace
+
+Provide:
+
+- Descriptive statistics
+- Time-series analysis
+- Trend analysis
+- Comparisons across facilities or regions
+- Distribution analysis
+- Outlier detection
+- Correlation analysis with appropriate caveats
+- Baseline forecasts
+- Model performance summaries
+- Configurable filters
+- Exportable tables and charts
+
+Charts must have meaningful labels, units, legends, dates, and source information.
+
+Do not imply that correlation establishes causation.
+
+#### Decision evidence
+
+Every important analytical output should expose:
+
+- The question being answered
+- Source datasets
+- Reporting period
+- Data freshness
+- Method used
+- Key assumptions
+- Calculation or model version
+- Relevant uncertainty
+- Known limitations
+- Last update time
+
+Build a reusable evidence object so the same validated result can support dashboards, reports, AI explanations, and audit records.
+
+### 9. MODULE FOUR: PROGRAMME OPERATIONS HUB
+
+Purpose: Track implementation activities, funding flows, procurement, medicine supply, and operational bottlenecks.
+
+Create an operational workspace with:
+
+- Programme overview
+- Funding and budget tracking
+- Procurement pipeline
+- Implementation milestones
+- Medicine inventory
+- Facility performance
+- Risk register
+- Operational alerts
+- Assigned actions
+- Responsible owners
+- Due dates
+- Status updates
+- Escalation history
+- Decision and approval records
+
+Provide list, table, chart, and timeline views where appropriate.
+
+#### Bottleneck detection
+
+Identify delays using explicit, configurable rules.
+
+Examples:
+
+- A procurement stage exceeds its expected duration.
+- A funding release remains pending past its due date.
+- A project milestone is overdue.
+- Stock coverage falls below a defined threshold.
+- A dataset has not been updated within its expected reporting cycle.
+- A planned intervention lacks the required budget or procurement approval.
+
+Every alert must display the triggering condition, source records, severity, responsible owner, timestamp, and recommended next action.
+
+Allow users to assign, acknowledge, investigate, resolve, or escalate alerts.
+
+Record status changes in an audit log.
+
+The system must not label a delay as fraud or misconduct without sufficient evidence and an appropriate investigation process.
+
+### 10. MODULE FIVE: AI LEARNING ACADEMY
+
+Purpose: Help staff develop practical AI literacy and use AI tools responsibly.
+
+Create a learning portal with:
+
+- Learning pathways
+- Short lessons
+- Interactive exercises
+- Prompting guides
+- Data analysis tutorials
+- AI evaluation exercises
+- Responsible AI lessons
+- Sector-specific case studies
+- Workshop materials
+- Knowledge checks
+- Progress tracking
+- Facilitator guides
+- Downloadable playbooks
+
+Include at least these learning pathways:
+
+1. AI fundamentals for development professionals.
+2. Effective LLM use for research and programme operations.
+3. Data quality and evidence-based decision-making.
+4. Forecasting and predictive analytics.
+5. Responsible AI, privacy, fairness, and human oversight.
+6. Evaluating AI prototypes.
+7. Using AI-assisted decision-support systems.
+8. Communicating analytical findings to non-technical stakeholders.
+
+Create a complete sample lesson with objectives, explanatory material, a practical exercise, an assessment, and a marking rubric.
+
+Provide an administrator interface for managing lesson content.
+
+Do not award credentials implying formal accreditation unless a legitimate accreditation process exists.
+
+### 11. MODULE SIX: RESPONSIBLE AI AND GOVERNANCE
+
+Purpose: Make the entire platform traceable, secure, fair, and accountable.
+
+Build a central Responsible AI workspace with the following sections:
+
+- AI system inventory
+- Model registry
+- Dataset registry
+- Risk assessments
+- Privacy reviews
+- Fairness assessments
+- Evaluation results
+- Human approval requirements
+- Incident register
+- Audit history
+- Model limitations
+- Governance policies
+
+For every AI-enabled feature, record:
+
+- Purpose
+- Intended users
+- Intended use
+- Prohibited or unsupported use
+- Data inputs
+- Model or method
+- Model version
+- Known limitations
+- Evaluation method
+- Performance results
+- Human oversight requirements
+- Risk classification
+- Responsible owner
+- Review date
+
+#### Privacy controls
+
+- Enforce access controls on the backend.
+- Restrict sensitive data to authorised users.
+- Use synthetic data for public demonstrations.
+- Avoid collecting personal information unless necessary.
+- Apply data minimisation.
+- Define retention and deletion policies.
+- Avoid sending sensitive records to external LLM providers by default.
+- Redact sensitive information before permitted model calls.
+- Store API keys and service credentials securely.
+- Log access to sensitive datasets.
+- Document consent, legal basis, and data sharing requirements where applicable.
+
+#### Fairness controls
+
+Where data permits, compare model performance across relevant groups, locations, facility types, and resource settings.
+
+Report sample sizes, missing subgroup data, limitations, and uncertainty.
+
+Do not claim a model is unbiased because no disparity was detected in a small sample.
+
+#### Explainability controls
+
+Every recommendation must display:
+
+- Why the recommendation was generated
+- Which inputs influenced it
+- Which rules or models were used
+- What evidence supports it
+- How confident the system is, when a valid uncertainty measure exists
+- What assumptions apply
+- Which limitations remain
+- What action requires human approval
+
+#### Human oversight
+
+Implement configurable approval requirements.
+
+High-impact decisions involving funding allocations, procurement, medicine redistribution, or programme prioritisation must not execute automatically.
+
+Users with appropriate permissions must review and approve or reject consequential recommendations.
+
+Record the decision, reviewer, timestamp, supporting evidence, and reason for any override.
+
+#### Incident management
+
+Allow authorised users to report:
+
+- Incorrect recommendations
+- Data leakage
+- Unexpected model behaviour
+- Suspected bias
+- Security incidents
+- Missing evidence
+- Unsafe outputs
+
+Provide severity, ownership, status, remediation, and closure fields.
+
+### 12. FLAGSHIP SOLUTION A: MEDICINE AVAILABILITY INTELLIGENCE
+
+Build a complete operational application for monitoring essential medicine availability and anticipating stockouts.
+
+#### Primary workflow
+
+1. Import facility-level inventory records.
+2. Validate product identifiers, quantities, units, reporting dates, and expiry dates.
+3. Import consumption history and delivery schedules.
+4. Calculate stock coverage.
+5. Estimate demand using an appropriate baseline method.
+6. Forecast potential stockout risk.
+7. Detect near-expiry stock.
+8. Identify possible redistribution opportunities.
+9. Present evidence-backed recommendations.
+10. Obtain authorised human review.
+11. Record the final decision and subsequent outcome.
+
+#### Required data fields
+
+- Country
+- Region
+- District
+- Facility identifier
+- Facility type
+- Medicine identifier
+- Medicine name
+- Unit of measure
+- Reporting date
+- Opening stock
+- Quantity received
+- Quantity dispensed or consumed
+- Adjustments
+- Closing stock
+- Stockout days
+- Supplier or source
+- Expected delivery date
+- Delivery lead time
+- Batch identifier where relevant
+- Expiry date
+- Minimum stock threshold
+- Maximum stock threshold
+- Data source
+- Data quality status
+
+Use a consistent unit of measure for each product. Flag incompatible units rather than adding them together.
+
+#### Core calculations
+
+Calculate stock on hand using the applicable inventory movement records.
+
+Calculate average daily consumption from a defined historical period, handling zero, missing, and unreliable observations explicitly.
+
+Calculate estimated days of stock remaining as:
+
+Days of Stock = Usable Stock on Hand / Estimated Daily Consumption
+
+Define what counts as usable stock. Exclude expired or otherwise unavailable stock. Account for known reservations and data quality limitations where represented.
+
+If estimated consumption is zero, missing, or unreliable, do not generate a misleading numerical estimate. Display an appropriate status.
+
+Compare projected stock depletion with expected replenishment dates.
+
+#### Baseline forecasting
+
+Begin with simple methods such as:
+
+- Moving average
+- Exponential smoothing
+- Seasonal-naive forecasting when adequate seasonal history exists
+
+Use a more complex model only when the available evidence supports it.
+
+Compare forecasts against a held-out time period using appropriate metrics such as MAE, WAPE, and forecast bias. Avoid misleading MAPE results when actual demand contains zeros.
+
+Implement time-aware train/test separation to prevent leakage from future records.
+
+#### Redistribution recommendations
+
+Identify potential donor facilities with excess usable stock and recipient facilities facing elevated risk.
+
+Check:
+
+- Available quantity
+- Product compatibility
+- Expiry date
+- Expected demand
+- Minimum stock requirements
+- Delivery timing
+- Transfer constraints
+- Facility and programme restrictions
+
+Show the proposed transfer quantity, rationale, source records, and expected effect.
+
+Treat redistribution as a proposed action requiring approval. Do not initiate actual transfers.
+
+#### Dashboard indicators
+
+- Facilities monitored
+- Medicines monitored
+- Facilities at elevated stockout risk
+- Potential stockout events
+- Near-expiry stock
+- Potential redistribution opportunities
+- Forecast evaluation status
+- Data freshness
+
+Use genuine calculations from the demonstration dataset.
+
+### 13. FLAGSHIP SOLUTION B: PUBLIC FINANCE FLOW INTELLIGENCE
+
+Build an analytical workflow for understanding the relationship between budgets, funding releases, procurement, expenditure, and programme implementation.
+
+#### Required capabilities
+
+- Import budget and expenditure records.
+- Map programme identifiers across different systems.
+- Reconcile funding allocations with releases and expenditures.
+- Track procurement stages.
+- Compare planned and actual spending.
+- Detect overdue releases.
+- Identify unexplained financial variances.
+- Detect missing records and reconciliation gaps.
+- Analyse bottlenecks by programme, location, funding source, and reporting period.
+- Generate evidence-backed investigation questions.
+- Assign follow-up actions.
+- Produce executive reports.
+
+#### Suggested data entities
+
+- Programme
+- Budget allocation
+- Funding source
+- Cash release
+- Financial commitment
+- Procurement event
+- Expenditure transaction
+- Reporting period
+- Organisation
+- Geography
+- Currency
+- Reconciliation result
+- Operational bottleneck
+- Corrective action
+
+#### Financial integrity rules
+
+Use explicit currency codes and reporting periods.
+
+Never sum different currencies without a documented exchange-rate method and applicable date.
+
+Distinguish allocations, releases, commitments, invoices, payments, and actual expenditure. These are different financial events.
+
+Use deterministic calculations for financial totals and variances.
+
+Flag unmatched transactions and incomplete records instead of silently reconciling them.
+
+Never infer corruption, fraud, or intentional misuse from a numerical anomaly alone.
+
+### 14. FLAGSHIP SOLUTION C: HEALTH INTERVENTION PRIORITISATION
+
+Build an intervention-planning system that compares feasible options under explicit budget and implementation constraints.
+
+#### Required capabilities
+
+Allow users to define:
+
+- Intervention name
+- Target population
+- Geography
+- Total cost
+- Unit cost
+- Expected outcome
+- Evidence source
+- Evidence quality
+- Delivery capacity
+- Implementation period
+- Operational constraints
+- Equity considerations
+- Dependencies
+- Budget ceiling
+
+Provide:
+
+- Transparent scoring
+- Scenario comparison
+- Budget-constrained optimisation
+- Sensitivity analysis
+- Trade-off visualisation
+- Ranked options
+- Rationale for each ranking
+- Scenario saving and versioning
+- Approval workflow
+- Implementation tracking
+
+#### Optimisation logic
+
+Define the objective function explicitly.
+
+Where appropriate, maximise expected outcomes subject to:
+
+- Total budget limits
+- Minimum and maximum allocation constraints
+- Intervention capacity
+- Delivery constraints
+- Dependencies
+- Geographic coverage requirements
+- User-defined equity constraints
+
+For discrete intervention choices, implement a suitable integer or linear optimisation method where supported.
+
+Display infeasible scenarios and explain which constraints prevent a solution.
+
+Do not assign invented health benefits or cost-effectiveness values. Use synthetic values clearly labelled as demonstration assumptions until evidence-backed data is available.
+
+Separate evidence-based outcomes from user-entered assumptions.
+
+Allow users to change assumptions and inspect how the resulting allocation changes.
+
+Do not present a model ranking as a final policy decision.
+
+### 15. SHARED DATA MODEL
+
+Implement a coherent relational database.
+
+At minimum, define the following entities:
+
+- organisations
+- user_profiles
+- organisation_memberships
+- projects
+- project_memberships
+- stakeholders
+- problem_briefs
+- requirements_documents
+- datasets
+- dataset_versions
+- data_import_jobs
+- data_quality_results
+- data_dictionary_entries
+- analytical_runs
+- models
+- model_versions
+- experiments
+- experiment_runs
+- experiment_results
+- evidence_records
+- recommendations
+- recommendation_evidence
+- approvals
+- operational_alerts
+- action_items
+- budgets
+- funding_releases
+- procurement_events
+- expenditure_records
+- facilities
+- medicine_products
+- inventory_records
+- consumption_records
+- deliveries
+- intervention_options
+- optimisation_scenarios
+- learning_modules
+- learning_progress
+- risk_assessments
+- ai_incidents
+- audit_logs
+- reports
+- notifications
+
+Use appropriate foreign keys, indexes, constraints, timestamps, ownership fields, and deletion policies.
+
+Do not create unnecessary duplicate tables when a well-defined shared entity is appropriate.
+
+Use migrations or equivalent versioned schema changes.
+
+Implement row-level security for multi-tenant data when using Supabase.
+
+Test organisation isolation, project permissions, and role-based access.
+
+Never expose service-role credentials in frontend code.
+
+### 16. SYNTHETIC DEMONSTRATION DATASET
+
+Create a reproducible demonstration dataset for all three flagship solutions.
+
+The data must be synthetic. Label it clearly in the interface, dataset metadata, reports, charts, and screenshots.
+
+Use a fixed random seed so repeated data generation produces the same records.
+
+Generate linked records with consistent identifiers and referential integrity.
+
+Include:
+
+#### Medicine supply chain
+
+- Multiple synthetic countries or regions
+- Multiple districts and facilities
+- Multiple medicine products
+- At least 12 months of daily or weekly inventory history where feasible
+- Consumption variability
+- Lead-time variability
+- Stockouts
+- Near-expiry batches
+- Delayed deliveries
+- Potential redistribution opportunities
+- Missing values and duplicates for quality testing
+
+#### Public finance
+
+- Multiple programmes
+- Budget allocations
+- Funding releases
+- Procurement events
+- Expenditure records
+- Delayed stages
+- Unmatched transactions
+- Different reporting periods
+- At least two currencies for conversion-validation tests
+
+#### Intervention planning
+
+- Multiple intervention options
+- Synthetic costs
+- Expected outcome assumptions
+- Budget constraints
+- Capacity limits
+- Geographic constraints
+- At least three alternative budget scenarios
+
+Include deliberate data quality defects in a separate test fixture or clearly identified test records. Do not mix test defects into clean demonstration results without disclosure.
+
+Provide downloadable CSV files and a data-generation script or equivalent deterministic process.
+
+Create a README describing every dataset, field, unit, assumption, and limitation.
+
+Never represent synthetic figures as real-world African government, health facility, or Gates Foundation data.
+
+### 17. DATA DICTIONARY AND QUALITY REPORTING
+
+Generate a data dictionary for every demonstration dataset.
+
+Each field must include:
+
+- Dataset name
+- Field name
+- Business definition
+- Data type
+- Unit
+- Required or optional status
+- Allowed values
+- Validation rules
+- Example value
+- Source
+- Sensitivity classification
+- Relationships to other fields
+
+Implement a data quality report covering:
+
+- Completeness
+- Validity
+- Uniqueness
+- Consistency
+- Referential integrity
+- Timeliness
+- Accuracy limitations
+- Schema conformity
+
+Distinguish what the application measured from what it cannot verify.
+
+For example, completeness and uniqueness are measurable from available records. Accuracy against real operational conditions requires a trustworthy external reference.
+
+Provide an issue table containing:
+
+- Issue type
+- Affected field
+- Number of affected records
+- Severity
+- Example records
+- Recommended remediation
+- Resolution status
+
+Allow users to export the report.
+
+### 18. AI ARCHITECTURE AND EXECUTION FLOW
+
+Implement the following logical architecture.
+
+User interface
+→ Authentication and authorisation
+→ Application API
+→ Data validation and domain services
+→ Analytics, forecasting, and optimisation engines
+→ Evidence registry
+→ AI explanation and retrieval layer
+→ Human review and approval
+→ Audit and reporting services
+
+#### LLM responsibilities
+
+The LLM should:
+
+- Interpret natural-language questions.
+- Help users define problem statements.
+- Summarise approved reports and datasets.
+- Explain computed indicators.
+- Suggest investigative questions.
+- Draft project documents.
+- Explain model limitations.
+- Support learning and training.
+- Translate validated analytical findings into clear language.
+- Generate structured output conforming to application schemas.
+
+#### LLM restrictions
+
+The LLM must not:
+
+- Invent missing data.
+- Perform authoritative financial arithmetic without verification.
+- Replace the forecasting engine.
+- Override deterministic constraints.
+- Invent sources or citations.
+- Reveal records outside the user's permissions.
+- Execute financial or supply-chain transactions.
+- Automatically approve high-impact decisions.
+- Claim to have run code, models, or experiments when execution did not occur.
+
+#### Tool calling
+
+Expose narrowly scoped tools, such as:
+
+- list_accessible_datasets
+- inspect_dataset_schema
+- get_data_quality_summary
+- query_approved_aggregates
+- run_validated_analysis
+- get_forecast_results
+- compare_intervention_scenarios
+- retrieve_evidence
+- create_draft_report
+
+Every tool must validate inputs, enforce permissions, and return structured results.
+
+Do not permit arbitrary LLM-generated SQL to execute against unrestricted databases.
+
+#### Retrieval and grounding
+
+Use approved, access-controlled records and documents as retrieval sources.
+
+Attach source identifiers, dataset versions, reporting periods, and relevant record references to the retrieved evidence.
+
+The assistant must distinguish:
+
+- Verified facts
+- Computed results
+- Model predictions
+- User-entered assumptions
+- AI-generated hypotheses
+- Missing information
+
+If evidence is insufficient, the assistant must say so.
+
+#### AI service availability
+
+When no LLM API key is configured, the application must remain usable.
+
+Provide deterministic local workflows and a clearly labelled demonstration assistant using predefined responses grounded in the demonstration dataset.
+
+Never simulate a live LLM API call while presenting it as a genuine external model response.
+
+### 19. RECOMMENDATION AND EVIDENCE FRAMEWORK
+
+Create a reusable recommendation object with:
+
+- Recommendation identifier
+- Project identifier
+- Problem addressed
+- Proposed action
+- Supporting evidence
+- Source dataset versions
+- Analytical method
+- Calculation or model version
+- Expected benefit
+- Estimated cost, where supported
+- Assumptions
+- Risks
+- Uncertainty
+- Limitations
+- Responsible owner
+- Approval status
+- Review date
+
+Implement recommendation states:
+
+Draft, Under Review, Approved, Rejected, Deferred, Implemented, Outcome Reviewed.
+
+Allow users to compare the original recommendation with the final approved decision.
+
+Record reasons for changes and overrides.
+
+Link subsequent outcomes to the original recommendation so the system supports learning from past decisions.
+
+### 20. FULL UI/UX SPECIFICATION
+
+Implement these pages with coherent visual hierarchy, functional controls, loading states, error states, empty states, and responsive layouts.
+
+#### A. Public landing page
+
+Create a professional product page featuring:
+
+- AfriScope AI branding
+- Clear value proposition
+- Overview of the platform
+- Three flagship solutions
+- Six core modules
+- Responsible AI principles
+- Product screenshots or actual application previews
+- Sign-in and demo access
+- Footer with documentation, privacy, terms, and contact information
+
+Do not invent clients, testimonials, partnerships, funding, or impact statistics.
+
+#### B. Sign-in and onboarding
+
+Build:
+
+- Sign-in
+- Registration where enabled
+- Password recovery
+- Organisation creation or invitation flow
+- User role assignment
+- First-project setup
+- Guided platform tour
+- Demo workspace entry
+
+Make demo access explicit. Do not give unauthenticated users access to private organisation data.
+
+#### C. Main dashboard
+
+Create a decision-oriented overview with:
+
+- Active projects
+- Pending decisions
+- Critical operational alerts
+- Data quality status
+- Upcoming milestones
+- Recent experiments
+- Forecast status
+- Pending approvals
+- Recent reports
+- Activity feed
+
+Include filters for organisation, project, sector, geography, and reporting period where appropriate.
+
+Every metric must be derived from persisted records or the clearly labelled demonstration dataset.
+
+Clicking a metric must lead to the relevant underlying records.
+
+#### D. Problem Scoping pages
+
+Implement project list, project creation wizard, project detail, stakeholder map, data inventory, requirements, risks, milestones, and exportable problem brief.
+
+#### E. Experiment Lab pages
+
+Implement experiment list, experiment builder, configuration view, run history, comparison view, failure analysis, and experiment report.
+
+#### F. Data Intelligence pages
+
+Implement dataset catalogue, upload wizard, column mapping, validation report, data dictionary, analytics workspace, model results, and exports.
+
+#### G. Operations pages
+
+Implement programme overview, inventory management, budget flow, procurement pipeline, operational alerts, task assignments, approval queue, and audit history.
+
+#### H. Intervention Planner pages
+
+Implement intervention catalogue, option comparison, budget scenarios, optimisation results, sensitivity analysis, evidence review, and approval workflow.
+
+#### I. Learning Academy pages
+
+Implement learning catalogue, lesson reader, interactive exercise, quiz, progress view, and facilitator materials.
+
+#### J. Responsible AI pages
+
+Implement model registry, dataset registry, risk assessments, evaluation results, incidents, governance policies, and audit logs.
+
+#### K. Reports and documents
+
+Implement:
+
+- Report catalogue
+- Report preview
+- Version history
+- Export
+- Evidence references
+- Approval status
+- Downloadable data quality reports
+- Project brief exports
+- Model evaluation exports
+- Responsible AI assessments
+
+Generate real report content from persisted records.
+
+#### L. Administration and settings
+
+Implement:
+
+- Organisation profile
+- User management
+- Role management
+- Project permissions
+- Dataset access
+- Notification preferences
+- Audit access
+- Model configuration
+- Integration settings
+- Data retention settings
+- Environment and connection status
+
+Provide useful permission-denied screens instead of blank pages.
+
+### 21. DASHBOARD AND VISUALISATION RULES
+
+Use charts only where they answer a specific analytical question.
+
+Required chart types include:
+
+- Time-series line charts for stock and funding trends
+- Bar charts for facility and programme comparisons
+- Tables for transactions and data quality issues
+- Forecast plots with uncertainty intervals when the model supports them
+- Scenario comparison charts for intervention planning
+- Pipeline views for procurement stages
+- Geographic visualisations only when valid geographic data is available
+
+For each chart:
+
+- Label axes.
+- Display units.
+- Explain the reporting period.
+- Provide tooltips.
+- Show empty states.
+- Include accessible alternatives.
+- Make filters functional.
+- Avoid misleading scales.
+- Identify synthetic data clearly.
+- Provide a way to inspect underlying records.
+
+Do not invent live map data or real-time indicators.
+
+### 22. ACCESSIBILITY AND RESPONSIVE DESIGN
+
+Meet WCAG 2.2 AA where practical and verify key requirements.
+
+Implement:
+
+- Keyboard navigation
+- Visible focus states
+- Semantic headings
+- Accessible form labels
+- Screen-reader-friendly tables
+- Sufficient colour contrast
+- Accessible chart summaries
+- Descriptive button labels
+- Reduced-motion support
+- Responsive mobile layouts
+- Usable touch targets
+- Clear validation messages
+
+Test the application on desktop, tablet, and mobile widths.
+
+Large analytical tables must support horizontal scrolling or an appropriate mobile presentation.
+
+### 23. TESTING AND MODEL EVALUATION
+
+Create automated tests and a reproducible evaluation process.
+
+#### Unit tests
+
+Test:
+
+- Inventory calculations
+- Days-of-stock calculations
+- Expiry rules
+- Financial aggregation
+- Currency validation
+- Budget constraints
+- Data validation
+- Forecast evaluation metrics
+- Recommendation state transitions
+- Permission checks
+
+#### Integration tests
+
+Test:
+
+- File upload and validation
+- Database persistence
+- Project creation
+- Organisation isolation
+- Evidence retrieval
+- Approval workflows
+- Report generation
+- AI tool permissions
+
+#### End-to-end tests
+
+Test the following workflows:
+
+1. Create a project.
+2. Upload a synthetic inventory dataset.
+3. Inspect the data quality report.
+4. Calculate stock coverage.
+5. Run a baseline forecast.
+6. Review stockout risk alerts.
+7. Inspect a proposed redistribution.
+8. Submit a recommendation for approval.
+9. Approve or reject the recommendation.
+10. Export an evidence-backed report.
+
+Also test the public finance and intervention planning workflows.
+
+#### Forecast evaluation
+
+Implement an evaluation report containing:
+
+- Training period
+- Validation period
+- Forecast horizon
+- Baseline method
+- MAE
+- WAPE where appropriate
+- Forecast bias
+- Relevant comparison metrics
+- Sample size
+- Missing-data limitations
+- Performance by relevant subgroup where supported
+
+Compare against a simple baseline before presenting a more complex model as an improvement.
+
+Do not select models using the test set repeatedly.
+
+#### AI evaluation
+
+Evaluate:
+
+- Factual consistency with source records
+- Numerical consistency with computed results
+- Citation correctness
+- Unsupported claims
+- Appropriate refusal when evidence is insufficient
+- Prompt-injection resistance
+- Privacy leakage
+- Output schema compliance
+- Response latency and cost when measured
+
+Create a fixed evaluation set with expected outcomes and documented test cases.
+
+Do not claim the model passes evaluation until the tests have run.
+
+### 24. COMPARISON OF ANALYTICAL AND AI-ASSISTED APPROACHES
+
+Create a report comparing two approaches to the same operational problem.
+
+Approach A: Conventional analytics.
+
+Use validated formulas, descriptive statistics, deterministic thresholds, and baseline forecasting.
+
+Approach B: AI-assisted decision support.
+
+Use the same validated analytical results, supplemented by grounded LLM explanations, natural-language investigation, document summaries, and structured recommendations.
+
+Compare:
+
+- Numerical correctness
+- Forecast performance
+- Explanation usefulness
+- Evidence traceability
+- Unsupported claims
+- Time required to complete the workflow
+- User review effort
+- Model cost, when measured
+- Failure modes
+- Operational limitations
+
+Keep the underlying test data and evaluation conditions consistent.
+
+Do not assume the AI-assisted approach is superior. Report where it helps, where it adds no value, and where it introduces additional risk.
+
+### 25. EXPERIMENT LOG
+
+Implement an experiment log as a first-class product feature and provide a sample populated with reproducible demonstration experiments.
+
+Each entry must include:
+
+- Experiment ID
+- Date
+- Research question
+- Hypothesis
+- Dataset version
+- Method
+- Configuration
+- Evaluation criteria
+- Expected outcome
+- Actual result
+- Evidence
+- Failure cases
+- Limitations
+- Decision
+- Next action
+
+Include examples such as:
+
+- Moving-average forecasting versus exponential smoothing.
+- Different stockout thresholds.
+- Deterministic report generation versus LLM-assisted explanations.
+- Alternative budget allocation constraints.
+- Different prompt structures for evidence-grounded summaries.
+
+Clearly label any illustrative experiment entry that has not yet been executed.
+
+### 26. ARCHITECTURE AND TECHNICAL DOCUMENTATION
+
+Create a documentation folder in the repository.
+
+Include:
+
+README.md
+
+Explain the product, its purpose, supported workflows, installation, configuration, demonstration data, limitations, testing, and deployment.
+
+docs/PRD.md
+
+Document product goals, users, requirements, workflows, scope, non-goals, and acceptance criteria.
+
+docs/ARCHITECTURE.md
+
+Document the architecture, module boundaries, request flows, security boundaries, data flow, model execution, and deployment assumptions.
+
+Include a Mermaid architecture diagram in the file.
+
+docs/DATA_DICTIONARY.md
+
+Document tables, fields, types, units, relationships, validation rules, and synthetic-data assumptions.
+
+docs/DATA_QUALITY.md
+
+Document validation rules, known defects, quality metrics, and limitations.
+
+docs/MODEL_EVALUATION.md
+
+Document baseline models, evaluation methodology, metrics, test splits, results, and limitations. Separate measured results from expected or illustrative results.
+
+docs/AI_EVALUATION.md
+
+Document LLM evaluation cases, evidence-grounding checks, failure modes, privacy tests, and known limitations.
+
+docs/RESPONSIBLE_AI.md
+
+Document privacy, security, fairness, explainability, governance, human oversight, incident management, and prohibited uses.
+
+docs/EXPERIMENT_LOG.md
+
+Provide reproducible experiments and clearly identify results that remain unverified.
+
+docs/USER_GUIDE.md
+
+Explain how each user role completes the main workflows.
+
+docs/TRAINING_PLAYBOOK.md
+
+Provide a practical training agenda, exercises, facilitator notes, assessment questions, and safe-use guidance.
+
+docs/DECISIONS.md
+
+Record important architecture and product decisions, alternatives considered, trade-offs, and reasons for the selected approach.
+
+SECURITY.md
+
+Document vulnerability reporting, secret management, access control, dependency maintenance, and incident response.
+
+CONTRIBUTING.md
+
+Explain the contribution workflow, coding standards, testing requirements, and review process.
+
+Add a changelog and environment configuration example without real secrets.
+
+### 27. GITHUB REPOSITORY AND ENGINEERING PRACTICES
+
+Prepare the project for a clean GitHub repository.
+
+Implement:
+
+- Clear folder structure
+- Reusable components
+- Type-safe domain models
+- Consistent naming
+- Environment configuration
+- Database migrations
+- Seed scripts
+- Automated tests
+- Linting and formatting
+- Error handling
+- Structured logging
+- Versioned API contracts where applicable
+- CI workflow where supported
+- Dependency documentation
+- Secure configuration practices
+
+Suggested structure:
+
+src/
+  app/
+  components/
+  features/
+    problem-scoping/
+    experiment-lab/
+    data-intelligence/
+    programme-operations/
+    medicine-intelligence/
+    finance-intelligence/
+    intervention-planner/
+    learning-academy/
+    responsible-ai/
+    reports/
+    administration/
+  lib/
+  services/
+  schemas/
+  hooks/
+  types/
+  tests/
+
+supabase/
+  migrations/
+  functions/
+  seed.sql
+
+scripts/
+  generate_demo_data.py
+  evaluate_models.py
+
+docs/
+  README.md
+  PRD.md
+  ARCHITECTURE.md
+  DATA_DICTIONARY.md
+  DATA_QUALITY.md
+  MODEL_EVALUATION.md
+  AI_EVALUATION.md
+  RESPONSIBLE_AI.md
+  EXPERIMENT_LOG.md
+  USER_GUIDE.md
+  TRAINING_PLAYBOOK.md
+  DECISIONS.md
+
+tests/
+  unit/
+  integration/
+  e2e/
+
+Adapt this structure to the actual framework. Avoid empty placeholder folders and unnecessary abstractions.
+
+Never fabricate commit history, contributors, external partnerships, deployment results, or personal accomplishments. Clearly distinguish generated code from work reviewed and verified by the developer.
+
+### 28. PERFORMANCE AND RELIABILITY
+
+Optimise for the constraints of development teams operating with varied connectivity and hardware.
+
+Implement:
+
+- Pagination for large tables
+- Server-side filtering where appropriate
+- Efficient database queries
+- Loading indicators
+- Request timeouts
+- Retry policies for safe operations
+- Error boundaries
+- Graceful API failure handling
+- File size limits
+- Background jobs for long-running tasks when supported
+- Caching for appropriate read-only results
+- Clear stale-data indicators
+- Explicit save and processing states
+
+Avoid expensive LLM calls for calculations that ordinary code handles reliably.
+
+Record failures without exposing sensitive records or credentials in logs.
+
+### 29. DEMONSTRATION EXPERIENCE
+
+Create a guided demo workspace named:
+
+AfriScope AI Demonstration Environment
+
+The workspace should contain synthetic projects for all three flagship solutions.
+
+Include:
+
+- A completed problem brief
+- An imported inventory dataset
+- A data quality report
+- A working stockout risk analysis
+- A baseline forecast and evaluation
+- A proposed redistribution awaiting review
+- A public finance bottleneck analysis
+- An intervention prioritisation scenario
+- A sample AI-assisted evidence explanation
+- A completed learning lesson
+- A Responsible AI assessment
+- An experiment log
+- A downloadable report
+
+Ensure that demo records are connected consistently across the database.
+
+Provide a visible banner stating that the workspace contains synthetic data.
+
+Allow users to reset the demonstration environment to its original state through a protected action.
+
+Do not use invented real-world success stories or claim that demonstration results reflect actual health or financial outcomes.
+
+### 30. IMPLEMENTATION STRATEGY
+
+Build the application in the following order while preserving the full product architecture.
+
+Phase 1: Product foundation
+
+- Design system
+- Navigation
+- Authentication
+- Organisation and project workspaces
+- Database schema
+- Role-based access
+- Synthetic data generation
+- Core application shell
+
+Phase 2: First end-to-end workflow
+
+- Dataset upload
+- Data validation
+- Data dictionary
+- Inventory calculations
+- Medicine dashboard
+- Stockout risk rules
+- Baseline forecasting
+- Recommendation review
+- Audit history
+
+Phase 3: Shared AI and experimentation infrastructure
+
+- Evidence registry
+- Server-side LLM integration
+- Grounded assistant
+- Experiment logging
+- Model evaluation
+- Report generation
+- Responsible AI controls
+
+Phase 4: Remaining flagship solutions
+
+- Public finance flow intelligence
+- Intervention planning and optimisation
+- Programme operations integration
+
+Phase 5: Remaining platform modules
+
+- Problem Scoping Studio
+- AI Experiment Lab enhancements
+- AI Learning Academy
+- Governance administration
+- Organisation administration
+
+Phase 6: Verification and release preparation
+
+- Automated tests
+- Security checks
+- Accessibility checks
+- Model evaluation
+- Documentation
+- Error-state review
+- Responsive design verification
+- Deployment configuration
+- Demonstration walkthrough
+
+Do not postpone basic security, evidence traceability, data validation, or auditability until the end.
+
+### 31. DEFINITION OF DONE
+
+The application is ready for initial demonstration only when the following acceptance criteria are satisfied.
+
+Product functionality:
+
+- Users navigate all implemented modules.
+- Core workflows work end to end.
+- Data persists between sessions where persistence is configured.
+- Forms validate inputs.
+- Filters and search return correct results.
+- Tables and charts use real application data.
+- Recommendations link to their evidence.
+- Approval actions update records and audit history.
+- Reports contain the correct data and assumptions.
+
+Data and analytics:
+
+- The demonstration dataset is reproducible.
+- The data dictionary is complete.
+- Quality checks produce verifiable results.
+- Inventory calculations pass unit tests.
+- Financial calculations respect currency and period rules.
+- Forecast evaluation uses an appropriate time-based split.
+- Intervention allocation respects configured constraints.
+
+AI and governance:
+
+- LLM calls occur server-side.
+- The application works in a documented fallback mode without an API key.
+- AI explanations use validated evidence.
+- Unsupported claims are tested.
+- High-impact actions require human approval.
+- Permissions prevent unauthorised data access.
+- Governance and evaluation documentation exists.
+
+Engineering:
+
+- The application builds successfully.
+- Linting and type checks pass where configured.
+- Automated tests have been run and results recorded.
+- Database migrations and seed scripts are documented.
+- No secrets are committed.
+- Setup instructions work in a clean environment.
+- Known limitations are documented.
+
+Documentation:
+
+- README and product requirements exist.
+- Architecture and Mermaid diagram exist.
+- Data dictionary and quality report exist.
+- Model and AI evaluation reports distinguish measured results from unverified examples.
+- Experiment log identifies executed and illustrative experiments.
+- Responsible AI assessment exists.
+- User guide and training playbook exist.
+- GitHub setup and contribution instructions exist.
+
+Do not mark an acceptance criterion complete merely because a screen exists.
+
+### 32. FINAL EXECUTION INSTRUCTIONS
+
+Begin by inspecting the available development environment, project files, framework, database configuration, and existing components.
+
+If the project is empty, establish the application foundation.
+
+If an existing project is present, preserve working functionality and improve it incrementally.
+
+Then proceed to implement AfriScope AI directly.
+
+Follow these rules:
+
+1. Do not return only a development plan. Implement the application.
+2. Do not stop after generating the landing page.
+3. Do not create non-functional buttons or fake analytical results.
+4. Do not use fabricated live data or unverified external integrations.
+5. Do not claim successful tests without running them.
+6. Do not claim a live deployment unless deployment succeeds.
+7. Do not expose credentials or sensitive data.
+8. Do not omit the documentation and evaluation work.
+9. Prefer complete, testable workflows over a large number of unfinished screens.
+10. Maintain the shared architecture so all six modules and three flagship solutions work as one coherent platform.
+
+When you encounter a limitation, implement the safest functional alternative, document the limitation, and continue.
+
+At the end, provide a concise implementation report containing:
+
+- What was implemented
+- Which modules and workflows work
+- Which database tables and migrations were created
+- Which synthetic datasets are available
+- Which automated tests were executed and their actual results
+- Which model evaluations were executed and their actual results
+- Which external services require configuration
+- Which features remain incomplete
+- Known security, data, and model limitations
+- How to run the application locally
+- How to configure the environment
+- How to run tests
+- How to reset the demonstration data
+- How to prepare the repository for GitHub
+- How to deploy the application
+- The next three highest-priority engineering tasks
+
+The final result must be a credible, reproducible AI decision-support application that demonstrates sound software engineering, applied analytics, model evaluation, responsible AI, and practical problem-solving for African development systems.
+
+Start implementation now. Always commit and push changes to the github repo
+```

@@ -53,13 +53,24 @@ export async function createDatabase(
   let tx: <T>(fn: (c: Client) => Promise<T>) => Promise<T>, close: () => Promise<void>;
   const url =
     options.url ??
-    (options.path ? undefined : process.env.DATABASE_URL || process.env.POSTGRES_URL);
+    (options.path
+      ? undefined
+      : process.env.DATABASE_URL ||
+        process.env.POSTGRES_URL ||
+        process.env.SUPABASE_DATABASE_URL ||
+        process.env.SUPABASE_DB_URL);
   if (url) {
+    const isSsl =
+      url.includes('sslmode=require') ||
+      url.includes('supabase.co') ||
+      url.includes('pooler.supabase.com') ||
+      url.includes('neon.tech');
     const pool = new pg.Pool({
       connectionString: url,
       max: options.max ?? (process.env.VERCEL ? 1 : 8),
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
+      ssl: isSsl ? { rejectUnauthorized: false } : undefined,
     });
     tx = async (fn) => {
       const c = await pool.connect();

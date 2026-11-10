@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { api } from './api';
 import {
   can,
+  ROLE_LABELS,
   type Permission,
   type Role,
   type Project,
@@ -68,7 +69,10 @@ type Store = {
   notify: (message: string, error?: boolean) => void;
   toast: { message: string; error: boolean } | null;
   logout: () => Promise<void>;
+  switchPersona: (role: Role) => Promise<void>;
   setData: React.Dispatch<React.SetStateAction<ProjectData | null>>;
+  realtimeConnected: boolean;
+  liveEvents: Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>;
 };
 const Context = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -77,7 +81,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [projectId, setProjectId] = useState(localStorage.getItem('afriscope-project') || ''),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(''),
-    [toast, setToast] = useState<{ message: string; error: boolean } | null>(null);
+    [toast, setToast] = useState<{ message: string; error: boolean } | null>(null),
+    [realtimeConnected, setRealtimeConnected] = useState(false),
+    [liveEvents, setLiveEvents] = useState<Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>>([]);
+
   const notify = useCallback((message: string, error = false) => setToast({ message, error }), []);
   useEffect(() => {
     if (!toast) return;
@@ -105,6 +112,63 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    let es: EventSource | null = null;
+    let retryTimeout: NodeJS.Timeout | null = null;
+
+    const connectSse = () => {
+      try {
+        const token = sessionStorage.getItem('afriscope_token') || '';
+        const url = `/api/realtime/stream?token=${encodeURIComponent(token)}`;
+        es = new EventSource(url);
+
+        es.onopen = () => {
+          setRealtimeConnected(true);
+        };
+
+        es.addEventListener('connected', () => {
+          setRealtimeConnected(true);
+        });
+
+        const handlePushEvent = (e: MessageEvent) => {
+          try {
+            const parsed = JSON.parse(e.data);
+            notify(`${parsed.title}: ${parsed.message}`, parsed.severity === 'critical');
+            setLiveEvents((prev) => [parsed, ...prev.slice(0, 19)]);
+            if (parsed.type?.includes('alert') || parsed.type?.includes('stock') || parsed.type?.includes('sync')) {
+              void refresh();
+            }
+          } catch {
+            // ignore
+          }
+        };
+
+        es.addEventListener('supabase:operational_alerts:insert', handlePushEvent);
+        es.addEventListener('supabase:operational_alerts:update', handlePushEvent);
+        es.addEventListener('supabase:inventory_records:insert', handlePushEvent);
+        es.addEventListener('supabase:recommendations:update', handlePushEvent);
+        es.addEventListener('backup:completed', handlePushEvent);
+        es.addEventListener('sync:completed', handlePushEvent);
+
+        es.onerror = () => {
+          setRealtimeConnected(false);
+          es?.close();
+          retryTimeout = setTimeout(connectSse, 5000);
+        };
+      } catch {
+        setRealtimeConnected(false);
+      }
+    };
+
+    connectSse();
+
+    return () => {
+      es?.close();
+      if (retryTimeout) clearTimeout(retryTimeout);
+    };
+  }, [notify, refresh]);
+
   const selectProject = (id: string) => {
     setProjectId(id);
     localStorage.setItem('afriscope-project', id);
@@ -114,9 +178,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     workspace?.memberships.find((m) => m.organisation_id === data?.project.organisation_id)?.role ||
     'executive') as Role;
   const logout = async () => {
-    await api('/auth/logout', { method: 'POST', body: {} });
-    setWorkspace(null);
-    setData(null);
+    try {
+      await api('/auth/logout', { method: 'POST', body: {} });
+    } finally {
+      sessionStorage.removeItem('afriscope_token');
+      setWorkspace(null);
+      setData(null);
+    }
+  };
+  const switchPersona = async (newRole: Role) => {
+    try {
+      setLoading(true);
+      const res = await api<{ ok: boolean; token?: string }>('/auth/demo', {
+        body: { role: newRole },
+      });
+      if (res.token) {
+        sessionStorage.setItem('afriscope_token', res.token);
+      }
+      await refresh();
+      notify(`Switched demonstration persona to ${ROLE_LABELS[newRole] || newRole}`);
+    } catch (e) {
+      notify((e as Error).message, true);
+    } finally {
+      setLoading(false);
+    }
   };
   return (
     <Context.Provider
@@ -133,7 +218,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notify,
         toast,
         logout,
+        switchPersona,
         setData,
+        realtimeConnected,
+        liveEvents,
       }}
     >
       {children}

@@ -75,7 +75,7 @@ export function validateGrounding(answer: Answer, allowed: Record<string, unknow
   // Deterministic local summaries are templates. External model prose is restricted to source IDs,
   // with authoritative numbers displayed separately by the UI, never parsed from model prose.
   const sourceNumbers = new Set(
-    allowed.flatMap((e) => JSON.stringify(e.result).match(/\d+(?:\.\d+)?/g) || []),
+    allowed.flatMap((e) => JSON.stringify(e).match(/\d+(?:\.\d+)?/g) || []),
   );
   const proseNumbers = parsed.answer.match(/\d+(?:\.\d+)?/g) || [];
   if (proseNumbers.some((n) => !sourceNumbers.has(n) && !['1', '2', '3', '4'].includes(n)))

@@ -13,6 +13,7 @@ import {
   GitPullRequest,
   CheckCircle2,
 } from 'lucide-react';
+import { GisMap } from '../components/GisMap';
 import { useStore, useAction, type Row } from '../lib/store';
 import { api, exportCSV } from '../lib/api';
 import {
@@ -77,6 +78,7 @@ export function Operations() {
   }, [project, data?.analytical_runs.length, notify]);
   const tabs = [
     'Medicine supply',
+    'GIS district map',
     'Finance',
     'Procurement',
     'Alerts',
@@ -287,6 +289,26 @@ export function Operations() {
             </div>
           </div>
         </>
+      )}
+      {tab === 'GIS district map' && (
+        <div className="space-y-4">
+          <Notice>
+            District boundary GIS layers projected from GeoJSON topology. Facilities display real-time
+            stock risk indicators, transfer corridors, and supply levels.
+          </Notice>
+          <GisMap
+            facilities={data?.facilities || []}
+            stockRecords={stock || []}
+            onSelectFacility={(facExtId) => {
+              const matchedStock = (stock || []).find(
+                (s) => s.facility_external_id === facExtId || s.external_id === facExtId || s.facility_id === facExtId,
+              );
+              if (matchedStock) {
+                setSelected(matchedStock);
+              }
+            }}
+          />
+        </div>
       )}
       {tab === 'Finance' && (
         <>

@@ -557,6 +557,86 @@ export async function bootstrapAdmin(
     });
   });
 }
+export async function ensureUser(
+  db: Database,
+  username: string,
+  password: string,
+  email = 'declareola@afriscope.org',
+  fullName = 'Declare Ola',
+) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  const passwordHash = `scrypt:${salt}:${hash}`;
+  const normalizedUsername = username.trim().toLowerCase();
+  const normalizedEmail = email.trim().toLowerCase();
+
+  await db.admin(async (c) => {
+    // Clear any previous throttle lockouts for this user
+    await c.query('delete from auth_throttle where key=$1 or key=$2', [
+      createHash('sha256').update(normalizedUsername).digest('hex'),
+      createHash('sha256').update(normalizedEmail).digest('hex'),
+    ]);
+
+    const existing = (
+      await c.query(
+        'select id from user_profiles where lower(username)=$1 or lower(email)=$2',
+        [normalizedUsername, normalizedEmail],
+      )
+    ).rows[0];
+
+    let userId: string;
+    if (existing) {
+      userId = String(existing.id);
+      await c.query(
+        'update user_profiles set username=$1, email=$2, password_hash=$3, is_platform_admin=true where id=$4',
+        [normalizedUsername, normalizedEmail, passwordHash, userId],
+      );
+    } else {
+      const u = await insert(c, 'user_profiles', {
+        email: normalizedEmail,
+        username: normalizedUsername,
+        full_name: fullName,
+        password_hash: passwordHash,
+        is_platform_admin: true,
+      });
+      userId = String(u.id);
+    }
+
+    const orgs = (await c.query('select id from organisations')).rows;
+    for (const org of orgs) {
+      const mem = (
+        await c.query(
+          'select id from organisation_memberships where organisation_id=$1 and user_id=$2',
+          [org.id, userId],
+        )
+      ).rows[0];
+      if (!mem) {
+        await insert(c, 'organisation_memberships', {
+          organisation_id: org.id,
+          user_id: userId,
+          role: 'organisation_admin',
+        });
+      }
+    }
+
+    const projects = (await c.query('select id from projects')).rows;
+    for (const p of projects) {
+      const pm = (
+        await c.query(
+          'select id from project_memberships where project_id=$1 and user_id=$2',
+          [p.id, userId],
+        )
+      ).rows[0];
+      if (!pm) {
+        await insert(c, 'project_memberships', {
+          project_id: p.id,
+          user_id: userId,
+          role: 'organisation_admin',
+        });
+      }
+    }
+  });
+}
 async function seedModels(c: Client) {
   for (const p of DEMO_PROJECTS) {
     await insert(c, 'models', {

@@ -15,8 +15,7 @@ import { Governance } from './features/Governance';
 import { Reports } from './features/Reports';
 import { Projects, Administration, SettingsPage } from './features/Administration';
 import { Landing, SignIn, Guide } from './features/Public';
-import { AlertCircle, CheckCircle2, FlaskConical } from 'lucide-react';
-import { api } from './lib/api';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import './styles.css';
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string }> {
   state = { error: '' };
@@ -97,53 +96,7 @@ function Workspace() {
           }
         />
       </Routes>
-      <DemoRole />
     </Shell>
-  );
-}
-function DemoRole() {
-  const { workspace, project, notify } = useStore();
-  const [busy, setBusy] = React.useState(false);
-  if (!workspace?.organisations.find((o) => o.id === project?.organisation_id)?.is_demo)
-    return null;
-  return (
-    <div className="demo-role-control">
-      <FlaskConical size={14} />
-      <label>
-        Demo persona
-        <select
-          aria-label="Switch demonstration persona"
-          defaultValue=""
-          disabled={busy}
-          onChange={async (e) => {
-            setBusy(true);
-            try {
-              await api('/auth/demo', { body: { role: e.target.value } });
-              location.assign('/');
-            } catch (e) {
-              notify((e as Error).message, true);
-              setBusy(false);
-            }
-          }}
-        >
-          <option value="" disabled>
-            Switch role to test review
-          </option>
-          {[
-            'programme_manager',
-            'data_analyst',
-            'operator',
-            'reviewer',
-            'executive',
-            'organisation_admin',
-          ].map((r) => (
-            <option key={r} value={r}>
-              {r.replaceAll('_', ' ')}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
   );
 }
 function InlineGuide() {

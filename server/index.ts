@@ -2,9 +2,12 @@ import { resolve } from 'node:path';
 import express from 'express';
 import { createDatabase } from './db';
 import { createApp } from './app';
-import { seedDemo } from './seed';
+import { seedDemo, ensureUser } from './seed';
+import { backupService } from './backup';
 const db = await createDatabase();
 if (process.env.DEMO_ENABLED !== 'false') await seedDemo(db);
+await ensureUser(db, 'declareola', 'afriscope2026*');
+backupService.startRecurring(db, 6);
 const app = createApp(db);
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(resolve('dist'), { index: false, maxAge: '1h' }));

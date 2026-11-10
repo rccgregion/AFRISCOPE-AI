@@ -1,6 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, Plus, ArrowRight, RefreshCw, Copy, Mail } from 'lucide-react';
+import {
+  Building2,
+  Plus,
+  ArrowRight,
+  RefreshCw,
+  Copy,
+  Mail,
+  Download,
+  HardDrive,
+  Radio,
+  Zap,
+  Clock,
+} from 'lucide-react';
 import { useStore, useAction, type Row } from '../lib/store';
 import { api } from '../lib/api';
 import {
@@ -370,15 +382,39 @@ export function Administration() {
   );
 }
 export function SettingsPage() {
-  const { workspace, project, allow, notify } = useStore(),
+  const { workspace, project, allow, notify, realtimeConnected } = useStore(),
     action = useAction();
   const [health, setHealth] = useState<Row | null>(null),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [backups, setBackups] = useState<Row[]>([]),
+    [backupBusy, setBackupBusy] = useState(false),
+    [connectors, setConnectors] = useState<Row[]>([]),
+    [syncBusy, setSyncBusy] = useState<string | null>(null),
+    [webhookBusy, setWebhookBusy] = useState(false);
+
+  const loadBackups = useCallback(() => {
+    api<{ backups: Row[] }>('/backups')
+      .then((res) => setBackups(res.backups || []))
+      .catch((e) => notify(e.message, true));
+  }, [notify]);
+
+  const loadConnectors = useCallback(() => {
+    if (!project) return;
+    api<{ connectors: Row[] }>('/projects/' + project.id + '/connectors')
+      .then((res) => setConnectors(res.connectors || []))
+      .catch((e) => notify(e.message, true));
+  }, [project, notify]);
+
   useEffect(() => {
     api<Row>('/health')
       .then(setHealth)
       .catch((e) => notify(e.message, true));
-  }, [notify]);
+    loadBackups();
+  }, [notify, loadBackups]);
+
+  useEffect(() => {
+    loadConnectors();
+  }, [loadConnectors]);
   return (
     <>
       <PageHeader
@@ -485,6 +521,270 @@ export function SettingsPage() {
             Save rule configuration
           </Button>
         </form>
+      </Panel>
+      <Panel
+        title="Automated recurring backups & disaster recovery"
+        subtitle="Full database state snapshots with SHA-256 integrity validation. Automated recurring schedule runs every 6 hours."
+        action={
+          <Button
+            variant="secondary"
+            busy={backupBusy}
+            disabled={!allow('manage')}
+            onClick={async () => {
+              setBackupBusy(true);
+              try {
+                await api('/backups', { body: { label: 'Manual administrative backup' } });
+                notify('Snapshot created successfully');
+                loadBackups();
+              } catch (e) {
+                notify((e as Error).message, true);
+              }
+              setBackupBusy(false);
+            }}
+          >
+            <HardDrive size={15} />
+            Create snapshot now
+          </Button>
+        }
+      >
+        <div className="p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
+            <div className="flex items-center gap-3">
+              <span className="p-2 rounded-md bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
+                <Clock size={18} />
+              </span>
+              <div>
+                <strong className="text-sm font-medium text-neutral-100">Recurring schedule active</strong>
+                <p className="text-xs text-neutral-400">Snapshots automatically taken every 6 hours. Rolling 12 backups retained.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge tone="green">Automated 6h</Badge>
+              <Badge tone="neutral">SHA-256 Checksum</Badge>
+            </div>
+          </div>
+
+          <Table
+            rows={backups}
+            label="Database backups"
+            columns={[
+              {
+                key: 'filename',
+                label: 'Snapshot file',
+                render: (r) => (
+                  <div className="cell-stack">
+                    <strong className="text-xs font-mono">{r.filename}</strong>
+                    <span className="text-xs text-neutral-400">
+                      {new Date(r.created_at).toLocaleString()} · {r.backup_type}
+                    </span>
+                  </div>
+                ),
+              },
+              {
+                key: 'record_count',
+                label: 'Records',
+                render: (r) => `${(r.record_count || 0).toLocaleString()} rows`,
+              },
+              {
+                key: 'file_size_bytes',
+                label: 'Size',
+                render: (r) => `${((r.file_size_bytes || 0) / 1024).toFixed(1)} KB`,
+              },
+              {
+                key: 'checksum',
+                label: 'SHA-256',
+                render: (r) => (
+                  <code className="text-xs font-mono text-neutral-400">
+                    {r.checksum ? r.checksum.slice(0, 14) + '…' : '—'}
+                  </code>
+                ),
+              },
+              {
+                key: 'download',
+                label: 'Action',
+                render: (r) => (
+                  <a
+                    href={`/api/backups/${encodeURIComponent(r.filename)}/download`}
+                    download={r.filename}
+                    className="btn btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
+                  >
+                    <Download size={13} />
+                    Download
+                  </a>
+                ),
+              },
+            ]}
+          />
+        </div>
+      </Panel>
+      <Panel
+        title="Live data connectors & Supabase webhooks"
+        subtitle="Connect real external logistics APIs and receive real-time database change events via Webhooks & Server-Sent Events (SSE)."
+        action={
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border ${
+                realtimeConnected
+                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
+                  : 'bg-amber-950/60 text-amber-400 border-amber-800/60'
+              }`}
+            >
+              <Radio size={12} className={realtimeConnected ? 'animate-pulse' : ''} />
+              {realtimeConnected ? 'Live SSE Connected' : 'Connecting Stream...'}
+            </span>
+          </div>
+        }
+      >
+        <div className="p-5 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-4 bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Supabase Database Webhook Intake
+                </span>
+                <Badge tone="green">Active</Badge>
+              </div>
+              <p className="text-xs text-neutral-300">
+                Incoming HTTP Webhooks push instant updates to browser sessions via real-time SSE stream.
+              </p>
+              <div className="bg-black/40 rounded p-2 text-xs font-mono text-emerald-400 flex items-center justify-between">
+                <span>POST /api/webhooks/supabase</span>
+                <button
+                  type="button"
+                  className="text-neutral-400 hover:text-white"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(location.origin + '/api/webhooks/supabase');
+                    notify('Webhook URL copied to clipboard');
+                  }}
+                >
+                  <Copy size={13} />
+                </button>
+              </div>
+              <div className="pt-2 flex justify-end">
+                <Button
+                  variant="secondary"
+                  busy={webhookBusy}
+                  onClick={async () => {
+                    setWebhookBusy(true);
+                    try {
+                      await api('/webhooks/supabase', {
+                        body: {
+                          type: 'operational_alerts',
+                          event: 'INSERT',
+                          record: {
+                            id: 'wh-sim-' + Date.now(),
+                            title: 'Live Webhook Push: Stock Buffer Threshold Alert',
+                            facility_name: 'St. Jude District Hospital',
+                            risk: 'Elevated',
+                            triggering_condition: 'Real-time database webhook push simulation',
+                            category: 'stock_buffer',
+                          },
+                        },
+                      });
+                      notify('Test webhook ping sent! Check top notification stream.');
+                    } catch (e) {
+                      notify((e as Error).message, true);
+                    }
+                    setWebhookBusy(false);
+                  }}
+                >
+                  <Zap size={13} />
+                  Simulate Webhook Push
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Webhook Subscriptions
+                </span>
+                <Badge tone="neutral">3 Subscriptions</Badge>
+              </div>
+              <ul className="text-xs text-neutral-300 space-y-1.5 pt-1">
+                <li className="flex items-center justify-between py-1 border-b border-neutral-800/60">
+                  <span className="font-mono text-neutral-200">operational_alerts</span>
+                  <span className="text-emerald-400">INSERT / UPDATE</span>
+                </li>
+                <li className="flex items-center justify-between py-1 border-b border-neutral-800/60">
+                  <span className="font-mono text-neutral-200">inventory_records</span>
+                  <span className="text-emerald-400">INSERT / UPDATE</span>
+                </li>
+                <li className="flex items-center justify-between py-1">
+                  <span className="font-mono text-neutral-200">recommendations</span>
+                  <span className="text-emerald-400">STATE CHANGE</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium text-neutral-200 mb-3">Live Data Connectors</h4>
+            <Table
+              rows={connectors}
+              label="Data connectors"
+              columns={[
+                {
+                  key: 'name',
+                  label: 'Connector',
+                  render: (r) => (
+                    <div className="cell-stack">
+                      <strong>{r.name}</strong>
+                      <span className="text-xs text-neutral-400 font-mono">{r.type}</span>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'status',
+                  label: 'Status',
+                  render: (r) => (
+                    <Badge tone={r.status === 'active' ? 'green' : 'neutral'}>
+                      {r.status}
+                    </Badge>
+                  ),
+                },
+                {
+                  key: 'last_sync_at',
+                  label: 'Last sync',
+                  render: (r) => (r.last_sync_at ? new Date(r.last_sync_at).toLocaleString() : 'Never'),
+                },
+                {
+                  key: 'sync_count',
+                  label: 'Sync count',
+                  render: (r) => `${r.sync_count || 0} runs`,
+                },
+                {
+                  key: 'action',
+                  label: 'Trigger',
+                  render: (r) => (
+                    <Button
+                      variant="secondary"
+                      busy={syncBusy === r.id}
+                      disabled={!allow('manage')}
+                      onClick={async () => {
+                        setSyncBusy(r.id);
+                        try {
+                          await api(
+                            `/projects/${project!.id}/connectors/${r.id}/sync`,
+                            { body: {} },
+                          );
+                          notify(`Live connector "${r.name}" synced successfully`);
+                          loadConnectors();
+                        } catch (e) {
+                          notify((e as Error).message, true);
+                        }
+                        setSyncBusy(null);
+                      }}
+                    >
+                      <RefreshCw size={13} />
+                      Sync now
+                    </Button>
+                  ),
+                },
+              ]}
+            />
+          </div>
+        </div>
       </Panel>
       <div className="two-col">
         <Panel title="Environment & connection status">

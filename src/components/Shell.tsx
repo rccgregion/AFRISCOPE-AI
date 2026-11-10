@@ -22,13 +22,13 @@ import {
   ArrowUpRight,
   PanelLeftClose,
   PanelLeftOpen,
-  Menu,
   Sparkles,
   LogOut,
   CheckCircle2,
   TriangleAlert,
   Command,
   Leaf,
+  X,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { api } from '../lib/api';
@@ -69,7 +69,7 @@ export function Logo({ light = false }: { light?: boolean }) {
   );
 }
 export function Shell({ children }: { children: ReactNode }) {
-  const { workspace, project, data, role, selectProject, logout } = useStore();
+  const { workspace, project, data, role, selectProject, logout, realtimeConnected, liveEvents, switchPersona } = useStore();
   const [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
     [search, setSearch] = useState(false),
@@ -111,17 +111,26 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <Logo light />
-          <button
-            className="icon-btn collapse-button"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
-          </button>
+          <div className="sidebar-brand-actions">
+            <button
+              className="icon-btn collapse-button"
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+            <button
+              className="icon-btn mobile-close-button"
+              aria-label="Close navigation"
+              onClick={() => setMobile(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <div className="workspace-switch">
           <span className="org-avatar">
-            <Leaf size={17} />
+            <Leaf size={16} />
           </span>
           <div>
             <strong>{isDemo ? 'Demonstration workspace' : 'Organisation workspace'}</strong>
@@ -131,67 +140,70 @@ export function Shell({ children }: { children: ReactNode }) {
                 ?.name.replace('AfriScope AI ', '') || 'AfriScope AI'}
             </span>
           </div>
-          <ChevronsUpDown size={14} />
+          <ChevronsUpDown size={13} />
         </div>
-        <div className="nav-caption">WORKSPACE</div>
-        <nav aria-label="Primary navigation">
-          {navigation.slice(0, 9).map((item, i) => (
-            <div key={item.path}>
-              {i === 6 && <div className="nav-caption secondary-caption">GOVERN & COLLABORATE</div>}
-              <NavLink
-                to={item.path}
-                end={item.path === '/'}
-                title={collapsed ? item.label : undefined}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-                {item.path === '/operations' &&
-                  !!data?.operational_alerts.filter((a) => a.status === 'Open').length && (
-                    <b className="nav-count">
-                      {data.operational_alerts.filter((a) => a.status === 'Open').length}
-                    </b>
-                  )}
-              </NavLink>
-            </div>
+        <nav className="sidebar-nav" aria-label="Primary navigation">
+          <div className="nav-caption">CORE WORKSPACE</div>
+          {navigation.slice(0, 6).map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.path === '/'}
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon size={17} />
+              <span>{item.label}</span>
+              {item.path === '/operations' &&
+                !!data?.operational_alerts.filter((a) => a.status === 'Open').length && (
+                  <b className="nav-count">
+                    {data.operational_alerts.filter((a) => a.status === 'Open').length}
+                  </b>
+                )}
+            </NavLink>
           ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-help">
-            <ShieldCheck size={21} />
-            <strong>Evidence before action.</strong>
-            <p>
-              Transparent methods.
-              <br />
-              Human-led decisions.
-            </p>
-            <Link to="/governance">
-              Our responsible AI approach <ArrowUpRight size={13} />
-            </Link>
-          </div>
-          {navigation.slice(9).map((item) => (
-            <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined}>
-              <item.icon size={18} />
+
+          <div className="nav-caption">GOVERN & COLLABORATE</div>
+          {navigation.slice(6, 9).map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon size={17} />
               <span>{item.label}</span>
             </NavLink>
           ))}
+
+          <div className="nav-caption">SYSTEM</div>
+          {navigation.slice(9).map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              title={collapsed ? item.label : undefined}
+            >
+              <item.icon size={17} />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          <Link to="/governance" className="sidebar-footer-link" title="Responsible AI principles">
+            <ShieldCheck size={15} />
+            <span>Responsible AI</span>
+            <ArrowUpRight size={12} />
+          </Link>
           <div className="sidebar-version">
-            <span className="connection-dot" /> Local workspace <span>v0.1</span>
+            <span className="connection-dot" />
+            <span>v0.1</span>
           </div>
         </div>
       </aside>
       <div className="app-main">
         <header className="global-header">
-          <button
-            className="icon-btn mobile-menu"
-            aria-label="Open navigation"
-            onClick={() => setMobile(true)}
-          >
-            <Menu size={21} />
-          </button>
           <div className="header-breadcrumb">
-            <Building2 size={15} />
-            <span>{isDemo ? 'Demo organisation' : 'Organisation'}</span>
-            <ChevronRight size={13} />
+            <Building2 size={15} className="header-org-icon" />
+            <span className="header-org-name">{isDemo ? 'Demo organisation' : 'Organisation'}</span>
+            <ChevronRight size={13} className="header-sep" />
             <label className="project-select">
               <span className="sr-only">Current project</span>
               <select value={project?.id || ''} onChange={(e) => selectProject(e.target.value)}>
@@ -205,25 +217,37 @@ export function Shell({ children }: { children: ReactNode }) {
             </label>
           </div>
           <div className="header-actions">
-            <button className="global-search-button" onClick={() => setSearch(true)}>
-              <Search size={17} />
-              <span>Search workspace</span>
-              <kbd>
+            <button className="global-search-button" onClick={() => setSearch(true)} title="Search (⌘K)">
+              <Search size={16} />
+              <span className="search-label">Search workspace</span>
+              <kbd className="search-kbd">
                 <Command size={10} /> K
               </kbd>
             </button>
+            {realtimeConnected && (
+              <span className="live-realtime-badge" title="Live Supabase real-time webhook stream connected">
+                <span className="live-dot" />
+                <span className="live-text">Live</span>
+              </span>
+            )}
+            {isDemo && (
+              <span className="header-persona-pill" title={`Active role: ${ROLE_LABELS[role]}`}>
+                <span className="persona-dot" />
+                <span className="persona-role-name">{ROLE_LABELS[role]}</span>
+              </span>
+            )}
             <button
               className="icon-btn"
               aria-label="Notifications"
               onClick={() => setNotifications(true)}
             >
-              <Bell size={19} />
-              {!!data?.operational_alerts.filter((a) => a.status === 'Open').length && (
+              <Bell size={18} />
+              {(!!data?.operational_alerts.filter((a) => a.status === 'Open').length || !!liveEvents.length) && (
                 <i className="notification-dot" />
               )}
             </button>
-            <Link to="/guide" className="icon-btn" aria-label="Help and documentation">
-              <CircleHelp size={19} />
+            <Link to="/guide" className="icon-btn header-help-link" aria-label="Help and documentation">
+              <CircleHelp size={18} />
             </Link>
             <span className="header-divider" />
             <button
@@ -232,7 +256,7 @@ export function Shell({ children }: { children: ReactNode }) {
               aria-expanded={profile}
             >
               <span className="avatar">{workspace?.user.full_name.slice(0, 1)}</span>
-              <ChevronDown size={13} />
+              <ChevronDown size={12} className="profile-chevron" />
             </button>
             {profile && (
               <div className="profile-menu">
@@ -263,14 +287,16 @@ export function Shell({ children }: { children: ReactNode }) {
         </header>
         {isDemo && (
           <div className="demo-banner">
-            <span>
-              <FlaskConical size={13} />
-              <strong>Synthetic demonstration</strong>
-              <span className="banner-divider">·</span>Fictional places, records, and planning
-              assumptions. Not live operational data.
-            </span>
-            <Link to="/guide">
-              Explore the guide <ArrowUpRight size={12} />
+            <div className="demo-banner-info">
+              <FlaskConical size={14} className="banner-flask shrink-0" />
+              <span>
+                <strong>Synthetic demonstration</strong>
+                <span className="banner-divider">·</span>
+                Fictional records & planning assumptions. Not live operational data.
+              </span>
+            </div>
+            <Link to="/guide" className="demo-guide-link">
+              Platform guide <ArrowUpRight size={12} />
             </Link>
           </div>
         )}

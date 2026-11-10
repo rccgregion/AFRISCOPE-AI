@@ -118,8 +118,12 @@ describe('authenticated API and database isolation', () => {
   it('RLS hides other organisation rows', async () => {
     await db.scoped(demoUserId('executive'), async (c) => {
       expect((await c.query('select * from projects')).rows).toHaveLength(3);
-      await expect(c.query('select * from auth_sessions')).rejects.toThrow('permission denied');
     });
+    await expect(
+      db.scoped(demoUserId('executive'), async (c) => {
+        await c.query('select * from auth_sessions');
+      }),
+    ).rejects.toThrow('permission denied');
   });
   it('rejects organisation/project mismatch in database', async () => {
     await expect(

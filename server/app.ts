@@ -36,6 +36,10 @@ import {
   type RawRow,
 } from './validation';
 import { explain } from './assistant';
+import { realtime } from './realtime';
+import { backupService } from './backup';
+import { listConnectors, createConnector, syncConnector } from './connectors';
+import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis';
 
 type Authed = Request & {
   user: {
@@ -58,13 +62,13 @@ const asyncRoute =
   };
 export function createApp(db: Database) {
   const app = express();
+  app.set('trust proxy', true);
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     if (req.path.startsWith('/api')) res.setHeader('Cache-Control', 'no-store');
     next();
@@ -72,14 +76,34 @@ export function createApp(db: Database) {
   app.use('/api', (req, res, next) => {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
       const origin = req.headers.origin;
+      const host = (req.get('x-forwarded-host') || req.headers.host || '').split(':')[0];
+      let originHost = '';
+      if (origin) {
+        try {
+          originHost = new URL(origin).hostname;
+        } catch {
+          originHost = '';
+        }
+      }
       const allowed = new Set(
         [
           process.env.APP_ORIGIN,
           `http://${req.headers.host}`,
           `https://${req.headers.host}`,
+          req.get('x-forwarded-host') ? `http://${req.get('x-forwarded-host')}` : '',
+          req.get('x-forwarded-host') ? `https://${req.get('x-forwarded-host')}` : '',
         ].filter(Boolean),
       );
-      if ((origin && !allowed.has(origin)) || req.get('X-AfriScope-Request') !== '1') {
+      const isAllowedOrigin =
+        !origin ||
+        allowed.has(origin) ||
+        originHost === host ||
+        originHost === 'localhost' ||
+        originHost === '127.0.0.1' ||
+        originHost.endsWith('.run.app') ||
+        originHost.endsWith('.e2b.app');
+
+      if (!isAllowedOrigin || req.get('X-AfriScope-Request') !== '1') {
         next(httpError(403, 'Request origin or CSRF header rejected'));
         return;
       }
@@ -95,17 +119,22 @@ export function createApp(db: Database) {
         [hash(token), user],
       );
     });
+    const isHttps = req.secure || req.get('x-forwarded-proto') === 'https';
     res.cookie(cookieName, token, {
       httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: isHttps ? 'none' : 'lax',
+      secure: isHttps,
       maxAge: 8 * 3600000,
       path: '/',
     });
+    res.setHeader('X-Session-Token', token);
+    return token;
   };
   const auth = async (req: Request, _res: Response, next: NextFunction) => {
     try {
-      const token = (req as Authed).cookies?.[cookieName] || req.cookies?.[cookieName];
+      const authHeader = req.headers.authorization;
+      const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const token = bearer || (req as Authed).cookies?.[cookieName] || req.cookies?.[cookieName];
       if (typeof token !== 'string' || token.length > 100)
         throw httpError(401, 'Sign in to access a workspace');
       const record = (
@@ -178,8 +207,8 @@ export function createApp(db: Database) {
           'organisation_admin',
         ])
         .parse(req.body.role || 'programme_manager');
-      await session(req, res, demoUserId(role));
-      res.json({ ok: true, role });
+      const token = await session(req, res, demoUserId(role));
+      res.json({ ok: true, role, token });
     },
     false,
   );
@@ -227,8 +256,8 @@ export function createApp(db: Database) {
         return u;
       });
       if (!ok) throw httpError(401, 'Username/email or password is incorrect');
-      await session(req, res, String(ok.id));
-      res.json({ ok: true });
+      const token = await session(req, res, String(ok.id));
+      res.json({ ok: true, token, user: { id: ok.id, username: ok.username, full_name: ok.full_name } });
     },
     false,
   );
@@ -236,7 +265,8 @@ export function createApp(db: Database) {
     await db.admin((c) =>
       c.query('delete from auth_sessions where token_hash=$1', [(req as Authed).sessionHash]),
     );
-    res.clearCookie(cookieName, { path: '/' });
+    const isHttps = req.secure || req.get('x-forwarded-proto') === 'https';
+    res.clearCookie(cookieName, { path: '/', sameSite: isHttps ? 'none' : 'lax', secure: isHttps });
     res.json({ ok: true });
   });
   route(
@@ -1540,6 +1570,170 @@ export function createApp(db: Database) {
       ),
     );
   });
+
+  // Real-time Event Stream (Server-Sent Events)
+  app.get('/api/realtime/stream', (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    const clientId = randomBytes(16).toString('hex');
+    const _token = (req.query.token as string) || (req as Authed).cookies?.[cookieName];
+    const userId = 'user-' + clientId.slice(0, 8);
+    const orgId = req.query.orgId as string | undefined;
+
+    realtime.addClient(clientId, userId, orgId, res);
+
+    req.on('close', () => {
+      realtime.removeClient(clientId);
+    });
+  });
+
+  // Supabase Database Webhook endpoint for real-time alert push
+  app.post('/api/webhooks/supabase', express.json(), (req, res) => {
+    const payload = (req.body || {}) as {
+      type?: string;
+      table?: string;
+      schema?: string;
+      event?: string;
+      record?: Record<string, unknown>;
+      old_record?: Record<string, unknown>;
+    };
+
+    const table =
+      payload.table ||
+      (payload.type && !['INSERT', 'UPDATE', 'DELETE'].includes(payload.type)
+        ? payload.type
+        : 'operational_alerts');
+    const type =
+      payload.event ||
+      (payload.type && ['INSERT', 'UPDATE', 'DELETE'].includes(payload.type)
+        ? payload.type
+        : 'INSERT');
+    const record = payload.record || {};
+
+    let title = `Supabase DB: ${table} ${type}`;
+    let message = `Received real-time table change on ${table}`;
+    let severity: 'critical' | 'warning' | 'info' | 'success' = 'info';
+
+    if (table === 'operational_alerts') {
+      const alertSeverity = String(record.severity || record.risk || 'warning').toLowerCase();
+      severity = alertSeverity === 'critical' ? 'critical' : 'warning';
+      title = `Real-time Alert: ${String(record.title || 'Operational bottleneck detected')}`;
+      message = String(
+        record.description ||
+          record.triggering_condition ||
+          `Action required on ${record.programme_code || 'programme'}`,
+      );
+    } else if (table === 'inventory_records') {
+      const stock = Number(record.usable_stock || 0);
+      const minStock = Number(record.minimum_stock || 100);
+      if (stock < minStock) {
+        severity = 'critical';
+        title = 'Critical Stock Breach';
+        message = `Usable stock (${stock}) dropped below minimum buffer (${minStock}) for batch ${record.batch_identifier || 'current'}.`;
+      }
+    } else if (table === 'recommendations') {
+      title = `Recommendation ${record.state || 'Updated'}`;
+      message = `Proposal: ${String(record.title || 'Prioritisation review')}`;
+    }
+
+    realtime.broadcast({
+      id: `wh-${Date.now()}-${randomBytes(4).toString('hex')}`,
+      type: `supabase:${table}:${type.toLowerCase()}`,
+      timestamp: new Date().toISOString(),
+      orgId: record.organisation_id ? String(record.organisation_id) : undefined,
+      projectId: record.project_id ? String(record.project_id) : undefined,
+      title,
+      message,
+      severity,
+      data: { table, type, record },
+    });
+
+    res.json({ ok: true, received: true, action: 'broadcast', table, type });
+  });
+
+  // Automated recurring backups endpoints
+  route('get', '/backups', async (_req, res) => {
+    const list = await backupService.listBackups(db);
+    res.json({ backups: list, recurring_interval_hours: 6 });
+  });
+
+  route('post', '/backups', async (req, res) => {
+    const type = req.body?.type === 'automated_daily' ? 'automated_daily' : 'manual';
+    const backup = await backupService.createBackup(db, undefined, (req as Authed).user.id, type);
+    res.status(201).json(backup);
+  });
+
+  app.get('/api/backups/:filename/download', auth, (req, res, next) => {
+    try {
+      const param = req.params.filename;
+      const filename = Array.isArray(param) ? param[0] : param;
+      if (!filename) throw httpError(400, 'Filename required');
+      const buf = backupService.getBackupFile(filename);
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(buf);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Live Data Connectors
+  route('get', '/projects/:id/connectors', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'read', id);
+    const connectors = await listConnectors(db, id);
+    res.json({ connectors });
+  });
+
+  route('post', '/projects/:id/connectors', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'manage', id);
+    const input = z
+      .object({
+        name: text.max(120),
+        source_type: z.enum(['supabase_direct', 'dhis2_api', 'openlmis_feed', 'custom_webhook']),
+        config: z.record(z.string(), z.unknown()).default({}),
+      })
+      .parse(req.body);
+    const created = await createConnector(db, id, input as never);
+    res.status(201).json(created);
+  });
+
+  route('post', '/projects/:id/connectors/:connectorId/sync', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    const connectorId = uuid.parse(req.params.connectorId);
+    await permission(req, 'manage', id);
+    const result = await syncConnector(db, connectorId, id);
+    res.json(result);
+  });
+
+  // GIS Districts & Boundaries
+  route('get', '/gis/districts', async (_req, res) => {
+    res.json({
+      type: 'FeatureCollection',
+      features: DISTRICT_BOUNDARIES.map((d) => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: d.coordinates,
+        },
+        properties: {
+          id: d.id,
+          name: d.name,
+          region: d.region,
+          facilities: d.facilities,
+          center: d.center,
+        },
+      })),
+      districts: DISTRICT_BOUNDARIES,
+      facility_coordinates: FACILITY_COORDINATES,
+    });
+  }, false);
+
   app.use('/api', (_req, _res, next) => next(httpError(404, 'API endpoint not found')));
   app.use(
     (

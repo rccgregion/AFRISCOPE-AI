@@ -1,5 +1,5 @@
 import { createDatabase } from '../server/db';
-import { seedDemo, bootstrapAdmin } from '../server/seed';
+import { seedDemo, bootstrapAdmin, ensureUser } from '../server/seed';
 const db = await createDatabase();
 try {
   if (process.env.ADMIN_PASSWORD && (process.env.ADMIN_EMAIL || process.env.ADMIN_USERNAME))
@@ -9,11 +9,12 @@ try {
       process.env.ADMIN_PASSWORD,
     );
   else await seedDemo(db);
-  console.log(
-    process.env.ADMIN_PASSWORD
-      ? 'Administrator bootstrap complete.'
-      : 'Seed complete. Synthetic demonstration records are ready.',
+  await ensureUser(
+    db,
+    process.env.ADMIN_USERNAME || 'declareola',
+    process.env.ADMIN_PASSWORD || 'afriscope2026*',
   );
+  console.log('Seed complete. User declareola is configured and demonstration records are ready.');
 } finally {
   await db.close();
 }

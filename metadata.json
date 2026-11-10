@@ -1,0 +1,6 @@
+{
+  "name": "AfriScope AI",
+  "description": "Transparent decision intelligence for development programmes. Connected evidence, medicine supply, public finance, and intervention planning.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
