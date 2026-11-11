@@ -23,7 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Sparkles,
-  LogOut,
+  RotateCcw,
   CheckCircle2,
   TriangleAlert,
   Command,
@@ -278,8 +278,13 @@ export function Shell({ children }: { children: ReactNode }) {
                 >
                   <CircleHelp size={15} /> Platform guide
                 </button>
-                <button onClick={() => void logout()}>
-                  <LogOut size={15} /> Sign out
+                <button
+                  onClick={async () => {
+                    setProfile(false);
+                    await logout();
+                  }}
+                >
+                  <RotateCcw size={15} /> Reset workspace
                 </button>
               </div>
             )}

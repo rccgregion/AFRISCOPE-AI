@@ -14,7 +14,7 @@ import { Learning } from './features/Learning';
 import { Governance } from './features/Governance';
 import { Reports } from './features/Reports';
 import { Projects, Administration, SettingsPage } from './features/Administration';
-import { Landing, SignIn, Guide } from './features/Public';
+import { Guide } from './features/Public';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import './styles.css';
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string }> {
@@ -39,7 +39,17 @@ function Workspace() {
   const { workspace, loading, error, data, role } = useStore();
   const location = useLocation();
   if (loading) return <Loading />;
-  if (!workspace) return <Navigate to="/sign-in" replace />;
+  if (error && !workspace) {
+    return (
+      <div className="fatal-error">
+        <AlertCircle size={35} />
+        <h1>Workspace connection</h1>
+        <p>{error}</p>
+        <Button onClick={() => window.location.reload()}>Retry connection</Button>
+      </div>
+    );
+  }
+  if (!workspace) return <Loading />;
   if (error) return <Notice tone="warning">{error}</Notice>;
   const restricted =
     location.pathname === '/administration' &&
@@ -124,9 +134,9 @@ function App() {
       <BrowserRouter>
         <StoreProvider>
           <Routes>
-            <Route path="/welcome" element={<Landing />} />
-            <Route path="/sign-in" element={<SignIn />} />
-            <Route path="/accept-invite" element={<SignIn />} />
+            <Route path="/welcome" element={<Navigate to="/" replace />} />
+            <Route path="/sign-in" element={<Navigate to="/" replace />} />
+            <Route path="/accept-invite" element={<Navigate to="/" replace />} />
             <Route path="/privacy" element={<Guide />} />
             <Route path="/terms" element={<Guide />} />
             <Route path="/*" element={<Workspace />} />

@@ -91,9 +91,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => setToast(null), 5500);
     return () => clearTimeout(timer);
   }, [toast]);
+  const ensureAuth = useCallback(async () => {
+    try {
+      const res = await api<{ ok: boolean; token?: string }>('/auth/auto', {
+        method: 'POST',
+        body: {},
+      });
+      if (res?.token) {
+        sessionStorage.setItem('afriscope_token', res.token);
+        return res.token;
+      }
+    } catch {
+      try {
+        const demoRes = await api<{ ok: boolean; token?: string }>('/auth/demo', {
+          method: 'POST',
+          body: { role: 'programme_manager' },
+        });
+        if (demoRes?.token) {
+          sessionStorage.setItem('afriscope_token', demoRes.token);
+          return demoRes.token;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  }, []);
+
   const refresh = useCallback(async () => {
     try {
-      const w = await api<Workspace>('/workspace');
+      let w: Workspace;
+      try {
+        if (!sessionStorage.getItem('afriscope_token')) {
+          await ensureAuth();
+        }
+        w = await api<Workspace>('/workspace');
+      } catch {
+        await ensureAuth();
+        w = await api<Workspace>('/workspace');
+      }
       setWorkspace(w);
       const chosen = w.projects.find((p) => p.id === projectId) || w.projects[0];
       if (chosen) {
@@ -104,11 +140,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setError('');
     } catch (e) {
       setError((e as Error).message);
-      setWorkspace(null);
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, ensureAuth]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -180,10 +215,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await api('/auth/logout', { method: 'POST', body: {} });
+    } catch {
+      // ignore
     } finally {
       sessionStorage.removeItem('afriscope_token');
-      setWorkspace(null);
-      setData(null);
+      await refresh();
+      notify('Workspace session reset to default');
     }
   };
   const switchPersona = async (newRole: Role) => {
