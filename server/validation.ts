@@ -325,7 +325,7 @@ export function validateRows(
           'reserved_stock',
           'expired_stock',
         ].map((f) => [f, r[f]]),
-      ) as Parameters<typeof import('../shared/analytics').inventoryBalance>[0];
+      ) as Parameters<typeof import('../shared/analytics.js').inventoryBalance>[0];
       const { inventoryBalance } = requireAnalytics();
       const errors = inventoryBalance(nums);
       if (errors.length) {
@@ -366,7 +366,7 @@ export function validateRows(
   });
   return { accepted, rejections };
 }
-import * as analytics from '../shared/analytics';
+import * as analytics from '../shared/analytics.js';
 function requireAnalytics() {
   return analytics;
 }

@@ -180,7 +180,7 @@ export async function createDatabase(
         // Batch each file into a single multi-statement query. Running hundreds
         // of statements one-by-one exceeds serverless time limits against
         // networked PostgreSQL (e.g. Supabase from Vercel).
-        const fileStatements = (await import('./sql')).statements(
+        const fileStatements = (await import('./sql.js')).statements(
           readFileSync(resolve('supabase/migrations', f), 'utf8'),
         );
         if (fileStatements.length) await c.query(fileStatements.join(';\n'));

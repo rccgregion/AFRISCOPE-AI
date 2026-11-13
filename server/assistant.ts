@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Client } from './db';
+import type { Client } from './db.js';
 export const answerSchema = z.object({
   answer: z.string().max(8000),
   evidence_ids: z.array(z.string().uuid()).max(8),

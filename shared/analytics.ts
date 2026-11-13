@@ -1,4 +1,4 @@
-import { TRANSITIONS, type RecommendationState, type ForecastMetric } from './domain';
+import { TRANSITIONS, type RecommendationState, type ForecastMetric } from './domain.js';
 
 export function inventoryBalance(r: {
   opening_stock: number;

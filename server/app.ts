@@ -5,10 +5,10 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
 import { z } from 'zod';
-import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain';
-import { transition, optimise, type Constraints } from '../shared/analytics';
+import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain.js';
+import { transition, optimise, type Constraints } from '../shared/analytics.js';
 import { tables } from './schema.mjs';
-import { audit, one, type Database, type Client } from './db';
+import { audit, one, type Database, type Client } from './db.js';
 import {
   context,
   json,
@@ -21,9 +21,9 @@ import {
   reportMarkdown,
   latestVersion,
   checksum,
-} from './services';
-import { insert, demoUserId, seedDemo } from './seed';
-import { supabaseStatus } from './supabase';
+} from './services.js';
+import { insert, demoUserId, seedDemo } from './seed.js';
+import { supabaseStatus } from './supabase.js';
 import {
   uuid,
   text,
@@ -35,12 +35,12 @@ import {
   qualityReport,
   username,
   type RawRow,
-} from './validation';
-import { explain } from './assistant';
-import { realtime } from './realtime';
-import { backupService } from './backup';
-import { listConnectors, createConnector, syncConnector } from './connectors';
-import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis';
+} from './validation.js';
+import { explain } from './assistant.js';
+import { realtime } from './realtime.js';
+import { backupService } from './backup.js';
+import { listConnectors, createConnector, syncConnector } from './connectors.js';
+import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis.js';
 
 type Authed = Request & {
   user: {

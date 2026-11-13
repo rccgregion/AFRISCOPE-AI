@@ -1,5 +1,5 @@
-import type { Database } from './db';
-import { realtime } from './realtime';
+import type { Database } from './db.js';
+import { realtime } from './realtime.js';
 
 export interface ConnectorConfig {
   id: string;
