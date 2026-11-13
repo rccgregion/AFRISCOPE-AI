@@ -17,17 +17,24 @@ export function getSupabaseClient(): SupabaseClient | null {
   return client;
 }
 
-/** Best-effort connectivity check. Never throws. */
+/** Best-effort connectivity check. Never throws and never hangs. */
 export async function supabaseStatus(): Promise<'configured' | 'unreachable' | 'unconfigured'> {
   const supabase = getSupabaseClient();
   if (!supabase) return 'unconfigured';
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const { error } = await supabase.auth.getUser();
+    const timeout = new Promise<'timeout'>((resolve) => {
+      timer = setTimeout(() => resolve('timeout'), 5000);
+    });
+    const result = await Promise.race([supabase.auth.getUser(), timeout]);
+    if (result === 'timeout') return 'unreachable';
     // getUser returns an error when no session exists; that still proves the
     // Supabase Auth endpoint is reachable with the configured keys.
-    void error;
+    void result.error;
     return 'configured';
   } catch {
     return 'unreachable';
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
