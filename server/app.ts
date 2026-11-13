@@ -23,6 +23,7 @@ import {
   checksum,
 } from './services';
 import { insert, demoUserId, seedDemo } from './seed';
+import { supabaseStatus } from './supabase';
 import {
   uuid,
   text,
@@ -183,6 +184,7 @@ export function createApp(db: Database) {
       res.json({
         status: 'ok',
         database: 'PostgreSQL / PGlite or configured PostgreSQL',
+        supabase: await supabaseStatus(),
         llm:
           process.env.LLM_EXTERNAL_ENABLED === 'true' && !!process.env.LLM_API_KEY
             ? 'configured — not health-checked'
@@ -293,7 +295,11 @@ export function createApp(db: Database) {
       });
       if (!ok) throw httpError(401, 'Username/email or password is incorrect');
       const token = await session(req, res, String(ok.id));
-      res.json({ ok: true, token, user: { id: ok.id, username: ok.username, full_name: ok.full_name } });
+      res.json({
+        ok: true,
+        token,
+        user: { id: ok.id, username: ok.username, full_name: ok.full_name },
+      });
     },
     false,
   );
@@ -1748,27 +1754,32 @@ export function createApp(db: Database) {
   });
 
   // GIS Districts & Boundaries
-  route('get', '/gis/districts', async (_req, res) => {
-    res.json({
-      type: 'FeatureCollection',
-      features: DISTRICT_BOUNDARIES.map((d) => ({
-        type: 'Feature',
-        geometry: {
-          type: 'Polygon',
-          coordinates: d.coordinates,
-        },
-        properties: {
-          id: d.id,
-          name: d.name,
-          region: d.region,
-          facilities: d.facilities,
-          center: d.center,
-        },
-      })),
-      districts: DISTRICT_BOUNDARIES,
-      facility_coordinates: FACILITY_COORDINATES,
-    });
-  }, false);
+  route(
+    'get',
+    '/gis/districts',
+    async (_req, res) => {
+      res.json({
+        type: 'FeatureCollection',
+        features: DISTRICT_BOUNDARIES.map((d) => ({
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: d.coordinates,
+          },
+          properties: {
+            id: d.id,
+            name: d.name,
+            region: d.region,
+            facilities: d.facilities,
+            center: d.center,
+          },
+        })),
+        districts: DISTRICT_BOUNDARIES,
+        facility_coordinates: FACILITY_COORDINATES,
+      });
+    },
+    false,
+  );
 
   app.use('/api', (_req, _res, next) => next(httpError(404, 'API endpoint not found')));
   app.use(
