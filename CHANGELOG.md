@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Supabase integration: `@supabase/server` + `@supabase/supabase-js`, `server/supabase.ts` connectivity helper reported by `/api/health`, `SUPABASE_DATABASE_URL` support in the Vercel adapter, env-driven admin bootstrap (`ADMIN_USERNAME`/`ADMIN_PASSWORD`), Node pinned to `22.x`, and removal of the hardcoded seed password fallback.
+
 - Added Vercel serverless API adapter, external PostgreSQL default via `DATABASE_URL`/`POSTGRES_URL`, and deployment guide.
 
 - Added username-based sign-in alongside email sign-in, optional usernames on invitation acceptance, and username-aware administrator bootstrap.

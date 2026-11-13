@@ -9,11 +9,9 @@ try {
       process.env.ADMIN_PASSWORD,
     );
   else await seedDemo(db);
-  await ensureUser(
-    db,
-    process.env.ADMIN_USERNAME || 'declareola',
-    process.env.ADMIN_PASSWORD || 'afriscope2026*',
-  );
+  if (process.env.ADMIN_PASSWORD) {
+    await ensureUser(db, process.env.ADMIN_USERNAME || 'declareola', process.env.ADMIN_PASSWORD);
+  }
   console.log('Seed complete. User declareola is configured and demonstration records are ready.');
 } finally {
   await db.close();

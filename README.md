@@ -84,7 +84,7 @@ In Settings, a demo organisation administrator can type `RESET`. For CLI reset, 
 
 ## Vercel
 
-See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL database (`DATABASE_URL` or `POSTGRES_URL`); PGlite local disk is not supported in serverless functions.
+See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL database (`DATABASE_URL` or `POSTGRES_URL`); PGlite local disk is not supported in serverless functions. Supabase is supported via its Postgres connection string (`DATABASE_URL` / `SUPABASE_DATABASE_URL`) plus `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` for the Supabase API integration.
 
 ## Configuration
 
