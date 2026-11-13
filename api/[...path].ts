@@ -14,11 +14,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return app(req as unknown as Request, res as unknown as Response);
   } catch (error) {
     const status = (error as { status?: number }).status || 503;
+    // Redact any credentials that might appear in connection errors.
+    const rawMessage = error instanceof Error ? error.message : String(error);
+    const message = rawMessage.replace(/:\/\/[^@\s]+@/g, '://[redacted]@').slice(0, 500);
     console.error(
       JSON.stringify({
         event: 'vercel.api_unavailable',
         status,
-        name: (error as Error).name,
+        name: error instanceof Error ? error.name : typeof error,
+        message,
       }),
     );
     return res.status(status).json({
@@ -26,6 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status === 503
           ? 'The API database is not configured or unavailable. Check DATABASE_URL/POSTGRES_URL, apply migrations, and review Vercel function logs.'
           : 'The API request could not be completed.',
+      detail: message,
     });
   }
 }

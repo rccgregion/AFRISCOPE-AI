@@ -7,8 +7,22 @@ import {
   writeFileSync,
   closeSync,
   unlinkSync,
+  existsSync,
 } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Locate the migrations directory regardless of the process working directory. */
+function migrationsDir(): string {
+  const candidates = [
+    resolve(dirname(fileURLToPath(import.meta.url)), '../supabase/migrations'),
+    resolve('supabase/migrations'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return candidates[0];
+}
 export type Params = unknown[];
 export interface QueryResult {
   rows: Record<string, unknown>[];
@@ -173,7 +187,8 @@ export async function createDatabase(
         'create table if not exists schema_migrations(version text primary key,applied_at timestamptz not null default now())',
       );
       const applied = await c.query('select version from schema_migrations');
-      for (const f of readdirSync(resolve('supabase/migrations'))
+      const migrationsPath = migrationsDir();
+      for (const f of readdirSync(migrationsPath)
         .filter((f) => f.endsWith('.sql'))
         .sort()) {
         if (applied.rows.some((r) => r.version === f)) continue;
@@ -181,7 +196,7 @@ export async function createDatabase(
         // of statements one-by-one exceeds serverless time limits against
         // networked PostgreSQL (e.g. Supabase from Vercel).
         const fileStatements = (await import('./sql.js')).statements(
-          readFileSync(resolve('supabase/migrations', f), 'utf8'),
+          readFileSync(resolve(migrationsPath, f), 'utf8'),
         );
         if (fileStatements.length) await c.query(fileStatements.join(';\n'));
         await c.query('insert into schema_migrations(version) values($1) on conflict do nothing', [
