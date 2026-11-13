@@ -177,10 +177,13 @@ export async function createDatabase(
         .filter((f) => f.endsWith('.sql'))
         .sort()) {
         if (applied.rows.some((r) => r.version === f)) continue;
-        for (const statement of (await import('./sql')).statements(
+        // Batch each file into a single multi-statement query. Running hundreds
+        // of statements one-by-one exceeds serverless time limits against
+        // networked PostgreSQL (e.g. Supabase from Vercel).
+        const fileStatements = (await import('./sql')).statements(
           readFileSync(resolve('supabase/migrations', f), 'utf8'),
-        ))
-          await c.query(statement);
+        );
+        if (fileStatements.length) await c.query(fileStatements.join(';\n'));
         await c.query('insert into schema_migrations(version) values($1) on conflict do nothing', [
           f,
         ]);
