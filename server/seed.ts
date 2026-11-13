@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash, randomBytes, scryptSync } from 'node:crypto';
 import Papa from 'papaparse';
-import { ROLES, DEMO_ORG, DEMO_PROJECTS, AS_OF } from '../shared/domain';
-import type { Database, Client } from './db';
+import { ROLES, DEMO_ORG, DEMO_PROJECTS, AS_OF } from '../shared/domain.js';
+import type { Database, Client } from './db.js';
 import {
   json,
   stockAnalysis,
@@ -13,7 +13,7 @@ import {
   saveScenario,
   createRecommendation,
   reportMarkdown,
-} from './services';
+} from './services.js';
 export const demoUserId = (role: string) =>
   `20000000-0000-4000-8000-${String(ROLES.indexOf(role as (typeof ROLES)[number]) + 1).padStart(12, '0')}`;
 const rows = (name: string) =>
@@ -287,7 +287,7 @@ export async function seedDemo(db: Database, reset = false) {
         mapping: Object.fromEntries(Object.keys(data[0]).map((k) => [k, k])),
         preview_rows: data.slice(0, 5),
       });
-      const { requiredFields, inventoryFields, financeFields } = await import('./validation');
+      const { requiredFields, inventoryFields, financeFields } = await import('./validation.js');
       const fields =
         kind === 'inventory' ? [...inventoryFields] : financeFields[kind] || Object.keys(data[0]);
       for (const field of fields)

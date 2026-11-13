@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Raw PostgreSQL rows are converted at domain boundaries. */
-import type { StockRow } from '../shared/domain';
+import type { StockRow } from '../shared/domain.js';
 type Transfer = NonNullable<StockRow['transfer_opportunity']>;
 import { createHash } from 'node:crypto';
 import {
@@ -14,9 +14,9 @@ import {
   transferQuantity,
   type Option,
   type Constraints,
-} from '../shared/analytics';
-import { AS_OF } from '../shared/domain';
-import { audit, one, type Client } from './db';
+} from '../shared/analytics.js';
+import { AS_OF } from '../shared/domain.js';
+import { audit, one, type Client } from './db.js';
 export const json = (v: unknown) => JSON.stringify(v);
 export async function context(c: Client, projectId: string) {
   const p = await one(c, 'select * from projects where id=$1', [projectId]);

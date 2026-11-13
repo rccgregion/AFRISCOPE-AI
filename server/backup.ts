@@ -1,8 +1,8 @@
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { Database } from './db';
-import { realtime } from './realtime';
+import type { Database } from './db.js';
+import { realtime } from './realtime.js';
 
 export interface BackupMetadata {
   id: string;

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed Vercel `500 FUNCTION_INVOCATION_FAILED` (`ERR_MODULE_NOT_FOUND`) by adding `.js` extensions to relative imports in `server/`, `api/`, and `shared/` so Node ESM can resolve them at runtime.
+
 - Batched migration statements (one query per file) so first-boot against networked PostgreSQL completes within serverless time limits; added a 5s timeout to the Supabase health check so `/api/health` can never hang.
 
 - Added Supabase integration: `@supabase/server` + `@supabase/supabase-js`, `server/supabase.ts` connectivity helper reported by `/api/health`, `SUPABASE_DATABASE_URL` support in the Vercel adapter, env-driven admin bootstrap (`ADMIN_USERNAME`/`ADMIN_PASSWORD`), Node pinned to `22.x`, and removal of the hardcoded seed password fallback.

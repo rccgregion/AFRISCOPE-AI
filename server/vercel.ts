@@ -1,7 +1,7 @@
 import type { Express } from 'express';
-import { createDatabase } from './db';
-import { createApp } from './app';
-import { seedDemo, ensureUser } from './seed';
+import { createDatabase } from './db.js';
+import { createApp } from './app.js';
+import { seedDemo, ensureUser } from './seed.js';
 
 let appPromise: Promise<Express> | null = null;
 

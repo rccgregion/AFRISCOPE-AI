@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import express from 'express';
-import { createDatabase } from './db';
-import { createApp } from './app';
-import { seedDemo, ensureUser } from './seed';
-import { backupService } from './backup';
+import { createDatabase } from './db.js';
+import { createApp } from './app.js';
+import { seedDemo, ensureUser } from './seed.js';
+import { backupService } from './backup.js';
 const db = await createDatabase();
 if (process.env.DEMO_ENABLED !== 'false') await seedDemo(db);
 await ensureUser(db, 'declareola', 'afriscope2026*');
