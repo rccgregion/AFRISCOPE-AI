@@ -59,6 +59,21 @@ npm audit --omit=dev
 
 E2E uses a separate `.data/e2e` database and production build on port 3100. Do not point tests/reset at private data. CI is in `.github/workflows/ci.yml`.
 
+### Smoke test
+
+`scripts/smoke.sh` checks a running deployment end to end and exits non-zero on the
+first failure. It needs only `curl` (no `jq`):
+
+```bash
+BASE_URL=https://africscope.vercel.app ./scripts/smoke.sh
+BASE_URL=http://127.0.0.1:3100 ./scripts/smoke.sh    # local production build
+```
+
+It verifies: `GET /api/health` → 200 `status: ok`; `POST`/`GET /api/auth/auto` → 200 with a
+token; `GET /api/workspace` with that token → 200 with at least one project; and
+`GET /api/realtime/stream` → 200 `text/event-stream` (using a short-lived ticket from
+`POST /api/realtime/ticket`, with `curl --max-time 5` since the stream is long-lived).
+
 ### Measured results
 
 - **89 unit/integration tests** passing: 59 unit + 30 API/database integration.
@@ -88,7 +103,7 @@ See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL dat
 
 ## Configuration
 
-See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
+See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `DEMO_MODE`, `SESSION_SECRET` (required — the app refuses to start without it; generate with `openssl rand -hex 32`), `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
 
 ## Documentation
 

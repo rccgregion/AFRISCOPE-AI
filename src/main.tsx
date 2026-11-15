@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { StoreProvider, useStore } from './lib/store';
 import { Shell } from './components/Shell';
-import { Button, Loading, Notice, Empty } from './components/ui';
+import { Button, Loading, Empty } from './components/ui';
 import { Dashboard } from './features/Dashboard';
 import { Operations } from './features/Operations';
 import { DataIntelligence } from './features/DataIntelligence';
@@ -42,19 +42,20 @@ function Workspace() {
   // No sign-in gate: the dashboard shell always renders. If the workspace
   // has not loaded yet (e.g. cold-start retry), show a retryable notice
   // inside the shell instead of a blocking error screen.
+  // The Shell renders a persistent "Can't reach the server" banner with a
+  // Retry button whenever `error` is set (see ServerBanner). Content is never
+  // replaced by an error, so the user keeps their context.
   if (error && !workspace) {
     return (
       <Shell>
-        <Notice tone="warning">
-          {error} The workspace is retrying automatically — or retry now.
-        </Notice>
-        <div style={{ marginTop: 16 }}>
-          <Button onClick={() => void refresh()}>Retry connection</Button>
-        </div>
+        <Empty
+          title="Loading the workspace was interrupted"
+          description={`${error} Retry to reconnect; nothing has been changed.`}
+          action={<Button onClick={() => void refresh()}>Retry connection</Button>}
+        />
       </Shell>
     );
   }
-  if (error) return <Notice tone="warning">{error}</Notice>;
   const restricted =
     location.pathname === '/administration' &&
     !['organisation_admin', 'platform_admin'].includes(role);
@@ -156,3 +157,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 );
+// Register the service worker after first paint. updateViaCache:'none' makes
+// the browser revalidate sw.js on every load so a bumped VERSION replaces old
+// workers promptly. The worker never caches /api/* responses.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .catch(() => undefined);
+  });
+}

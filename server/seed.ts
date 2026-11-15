@@ -21,6 +21,34 @@ const rows = (name: string) =>
     header: true,
     skipEmptyLines: true,
   }).data;
+/**
+ * Insert a seed row idempotently. Uses `on conflict ... do nothing` against a
+ * documented unique key, then selects the existing row so callers still get
+ * an id. Combined with the advisory lock in seedDemo(), concurrent cold
+ * starts cannot double-insert.
+ */
+export async function insertOnce(
+  c: Client,
+  table: string,
+  data: Record<string, unknown>,
+  conflictColumns: string[],
+) {
+  const keys = Object.keys(data);
+  const values = Object.values(data).map((v) =>
+    v !== null && typeof v === 'object' ? JSON.stringify(v) : v,
+  );
+  const result = await c.query(
+    `insert into ${table}(${keys.join(',')}) values(${keys
+      .map((_, i) => '$' + (i + 1))
+      .join(',')}) on conflict (${conflictColumns.join(',')}) do nothing returning *`,
+    values,
+  );
+  if (result.rows[0]) return result.rows[0];
+  const where = conflictColumns.map((col, i) => `${col}=$${i + 1}`).join(' and ');
+  const lookup = conflictColumns.map((col) => data[col]);
+  const existing = await c.query(`select * from ${table} where ${where}`, lookup);
+  return existing.rows[0];
+}
 export async function insert(c: Client, table: string, data: Record<string, unknown>) {
   const keys = Object.keys(data);
   const result = await c.query(
@@ -128,15 +156,23 @@ export async function seedDemo(db: Database, reset = false) {
         DEMO_ORG,
       ]);
     } else {
-      await insert(c, 'organisations', {
-        id: DEMO_ORG,
-        name: 'AfriScope AI Demonstration Environment',
-        is_demo: true,
-        settings: { retention_days: 365, external_ai: false },
-      });
+      await insertOnce(
+        c,
+        'organisations',
+        {
+          id: DEMO_ORG,
+          name: 'AfriScope AI Demonstration Environment',
+          is_demo: true,
+          settings: { retention_days: 365, external_ai: false },
+        },
+        ['id'],
+      );
       for (const role of ROLES)
-        await insert(c, 'user_profiles', {
-          id: demoUserId(role),
+        await insertOnce(
+          c,
+          'user_profiles',
+          {
+            id: demoUserId(role),
           email: `demo.${role}@afriscope.example`,
           full_name: {
             platform_admin: 'Alex · Platform reviewer',
@@ -147,15 +183,22 @@ export async function seedDemo(db: Database, reset = false) {
             reviewer: 'Joseph · Independent reviewer',
             executive: 'Sam · Executive observer',
           }[role],
-          password_hash: null,
-          is_platform_admin: false,
-        });
+            password_hash: null,
+            is_platform_admin: false,
+          },
+          ['id'],
+        );
       for (const role of ROLES)
-        await insert(c, 'organisation_memberships', {
-          organisation_id: DEMO_ORG,
-          user_id: demoUserId(role),
-          role,
-        });
+        await insertOnce(
+          c,
+          'organisation_memberships',
+          {
+            organisation_id: DEMO_ORG,
+            user_id: demoUserId(role),
+            role,
+          },
+          ['organisation_id', 'user_id'],
+        );
       const projects = [
         {
           title: 'Medicine Availability Intelligence',
@@ -180,20 +223,30 @@ export async function seedDemo(db: Database, reset = false) {
         },
       ];
       for (let i = 0; i < 3; i++)
-        await insert(c, 'projects', {
-          id: DEMO_PROJECTS[i],
-          organisation_id: DEMO_ORG,
-          ...projects[i],
-          settings: { stock_threshold_days: 21, as_of: AS_OF },
-          created_by: demoUserId('programme_manager'),
-        });
+        await insertOnce(
+          c,
+          'projects',
+          {
+            id: DEMO_PROJECTS[i],
+            organisation_id: DEMO_ORG,
+            ...projects[i],
+            settings: { stock_threshold_days: 21, as_of: AS_OF },
+            created_by: demoUserId('programme_manager'),
+          },
+          ['id'],
+        );
       for (const p of DEMO_PROJECTS)
         for (const role of ROLES)
-          await insert(c, 'project_memberships', {
-            project_id: p,
-            user_id: demoUserId(role),
-            role,
-          });
+          await insertOnce(
+            c,
+            'project_memberships',
+            {
+              project_id: p,
+              user_id: demoUserId(role),
+              role,
+            },
+            ['project_id', 'user_id'],
+          );
     }
     await seedLearning(c);
     await seedModels(c);
@@ -201,11 +254,11 @@ export async function seedDemo(db: Database, reset = false) {
       productIds = new Map<string, string>();
     {
       for (const f of rows('facilities')) {
-        const r = await insert(c, 'facilities', { ...base(med), ...f });
+        const r = await insertOnce(c, 'facilities', { ...base(med), ...f }, ['project_id', 'external_id']);
         facilityIds.set(f.external_id, String(r.id));
       }
       for (const p of rows('medicine_products')) {
-        const r = await insert(c, 'medicine_products', { ...base(med), ...p });
+        const r = await insertOnce(c, 'medicine_products', { ...base(med), ...p }, ['project_id', 'external_id']);
         productIds.set(p.external_id, String(r.id));
       }
       const optionIds = new Map<string, string>();

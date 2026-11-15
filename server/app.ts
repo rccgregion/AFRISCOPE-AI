@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
-import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { z } from 'zod';
 import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain.js';
 import { transition, optimise, type Constraints } from '../shared/analytics.js';
@@ -53,7 +53,6 @@ type Authed = Request & {
   sessionHash: string;
 };
 
-const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 const cookieName = 'afriscope_session';
 const safeUser = 'id,email,username,full_name,is_platform_admin,preferences';
 const asyncRoute =
@@ -65,6 +64,121 @@ export function createApp(db: Database) {
   const app = express();
   app.set('trust proxy', true);
   app.disable('x-powered-by');
+  // Session secret: required, no default. Token hashes are HMAC-SHA256 with
+  // this secret, so rotating it invalidates every existing session. The app
+  // refuses to start without it.
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error(
+      'SESSION_SECRET environment variable is required. Generate one with: openssl rand -hex 32',
+    );
+  }
+  const hash = (s: string) => createHmac('sha256', sessionSecret).update(s).digest('hex');
+  // Short-lived, single-purpose ticket for EventSource. The browser's
+  // EventSource API cannot send an Authorization header, so the stream must
+  // accept credentials in the query string. To limit exposure (query strings
+  // end up in proxy logs), the client exchanges its session for a ticket that
+  // expires in 5 minutes and is scoped to realtime only.
+  const ticketTtlMs = 5 * 60_000;
+  const issueTicket = (userId: string) => {
+    const payload = Buffer.from(
+      JSON.stringify({ sub: userId, exp: Date.now() + ticketTtlMs, scope: 'realtime' }),
+    ).toString('base64url');
+    const sig = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    return `${payload}.${sig}`;
+  };
+  const verifyTicket = (ticket: string): string | null => {
+    const [payload, sig] = ticket.split('.');
+    if (!payload || !sig) return null;
+    const expected = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+    try {
+      const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+        sub?: string;
+        exp?: number;
+        scope?: string;
+      };
+      if (data.scope !== 'realtime' || !data.sub) return null;
+      if (!data.exp || data.exp < Date.now()) return null;
+      return String(data.sub);
+    } catch {
+      return null;
+    }
+  };
+  // Resolve the caller of an SSE request: ticket first, then session token
+  // (query, for compatibility), then the session cookie.
+  const streamIdentity = async (req: Request): Promise<string | null> => {
+    const ticket = typeof req.query.ticket === 'string' ? req.query.ticket : null;
+    if (ticket) {
+      const sub = verifyTicket(ticket);
+      if (sub) return sub;
+    }
+    const raw =
+      (typeof req.query.token === 'string' ? req.query.token : null) ||
+      req.cookies?.[cookieName] ||
+      null;
+    if (typeof raw !== 'string' || !raw || raw.length > 100) return null;
+    const record = (
+      await db.admin((c) =>
+        c.query(
+          'select user_id from auth_sessions where token_hash=$1 and expires_at>now()',
+          [hash(raw)],
+        ),
+      )
+    ).rows[0];
+    return record ? String(record.user_id) : null;
+  };
+  // Demo auth (/auth/auto, /auth/demo) is gated behind DEMO_MODE=true.
+  // DEMO_MODE takes precedence when set; otherwise the legacy DEMO_ENABLED
+  // flag applies (demo stays on unless explicitly disabled, so existing
+  // deployments keep working).
+  const demoModeEnabled = () => {
+    if (process.env.DEMO_MODE !== undefined) return process.env.DEMO_MODE === 'true';
+    return process.env.DEMO_ENABLED !== 'false';
+  };
+  // Basic per-IP rate limiting for unauthenticated auth endpoints
+  // (~10 attempts/min). In-memory per app instance; on serverless each
+  // instance enforces its own budget, which is sufficient abuse friction
+  // for demo/auto auth.
+  const authAttempts = new Map<string, number[]>();
+  const authRateLimit = (req: Request, res: Response, next: NextFunction) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip =
+      req.ip ||
+      (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
+      'unknown';
+    const now = Date.now();
+    const windowMs = 60_000;
+    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < windowMs);
+    if (recent.length >= 10) {
+      res
+        .status(429)
+        .json({ error: 'Too many authentication attempts. Try again in a minute.' });
+      return;
+    }
+    recent.push(now);
+    authAttempts.set(ip, recent);
+    next();
+  };
+  // Vercel rewrite compatibility: the /api/(.*) rewrite targets the single
+  // api/index function. When the original path is carried as ?__path=...,
+  // remove that internal parameter so handlers only see real query
+  // parameters. req.query is derived from req.url, so rewrite the URL.
+  app.use((req, _res, next) => {
+    const query = req.query as Record<string, unknown> | undefined;
+    if (query && '__path' in query) {
+      try {
+        const url = new URL(req.url, 'http://internal');
+        url.searchParams.delete('__path');
+        req.url = url.pathname + url.search;
+      } catch {
+        // Leave the URL untouched if it cannot be parsed.
+      }
+    }
+    next();
+  });
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use((req, res, next) => {
@@ -167,9 +281,10 @@ export function createApp(db: Database) {
     path: string,
     fn: (req: Request, res: Response) => Promise<unknown>,
     protect = true,
+    extra?: (req: Request, res: Response, next: NextFunction) => void,
   ) => {
-    if (protect) app[method]('/api' + path, auth, asyncRoute(fn));
-    else app[method]('/api' + path, asyncRoute(fn));
+    const middlewares = [...(protect ? [auth] : []), ...(extra ? [extra] : [])];
+    app[method]('/api' + path, ...middlewares, asyncRoute(fn));
   };
   // The preceding helper deliberately keeps authentication ahead of every protected handler.
   app.use('/api', (_req, res, next) => {
@@ -180,7 +295,22 @@ export function createApp(db: Database) {
     'get',
     '/health',
     async (_req, res) => {
-      await db.admin((c) => c.query('select 1'));
+      // Liveness + readiness: the database must answer SELECT 1, otherwise
+      // the deployment is unusable and we say so with 503.
+      try {
+        await db.admin((c) => c.query('select 1'));
+      } catch (error) {
+        const detail = (error instanceof Error ? error.message : String(error))
+          .replace(/:\/\/[^@\s]+@/g, '://[redacted]@')
+          .slice(0, 300);
+        res.status(503).json({
+          status: 'unavailable',
+          database: 'unreachable',
+          supabase: await supabaseStatus().catch(() => 'unknown'),
+          detail,
+        });
+        return;
+      }
       res.json({
         status: 'ok',
         database: 'PostgreSQL / PGlite or configured PostgreSQL',
@@ -194,30 +324,48 @@ export function createApp(db: Database) {
     },
     false,
   );
+  const demoRole = (body: unknown) =>
+    z
+      .enum([
+        'programme_manager',
+        'data_analyst',
+        'operator',
+        'reviewer',
+        'executive',
+        'organisation_admin',
+      ])
+      .parse((body as { role?: string } | undefined)?.role || 'programme_manager');
   route(
     'post',
     '/auth/demo',
     async (req, res) => {
-      if (process.env.DEMO_ENABLED === 'false') throw httpError(403, 'Demo access is disabled');
-      const role = z
-        .enum([
-          'programme_manager',
-          'data_analyst',
-          'operator',
-          'reviewer',
-          'executive',
-          'organisation_admin',
-        ])
-        .parse(req.body.role || 'programme_manager');
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
+      const role = demoRole(req.body);
       const token = await session(req, res, demoUserId(role));
       res.json({ ok: true, role, token });
     },
     false,
+    authRateLimit,
+  );
+  // GET fallback for clients that cannot send a POST body (e.g. EventSource
+  // style flows). POST remains the primary demo-auth path.
+  route(
+    'get',
+    '/auth/demo',
+    async (req, res) => {
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
+      const role = demoRole(req.query);
+      const token = await session(req, res, demoUserId(role));
+      res.json({ ok: true, role, token });
+    },
+    false,
+    authRateLimit,
   );
   route(
     'post',
     '/auth/auto',
     async (req, res) => {
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const user = await db.admin(async (c) => {
         const u = (
           await c.query(
@@ -231,11 +379,13 @@ export function createApp(db: Database) {
       res.json({ ok: true, token, user });
     },
     false,
+    authRateLimit,
   );
   route(
     'get',
     '/auth/auto',
     async (req, res) => {
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const user = await db.admin(async (c) => {
         const u = (
           await c.query(
@@ -249,6 +399,7 @@ export function createApp(db: Database) {
       res.json({ ok: true, token, user });
     },
     false,
+    authRateLimit,
   );
   route(
     'post',
@@ -1613,8 +1764,31 @@ export function createApp(db: Database) {
     );
   });
 
-  // Real-time Event Stream (Server-Sent Events)
-  app.get('/api/realtime/stream', (req, res) => {
+  // Exchange a session for a short-lived realtime ticket. EventSource cannot
+  // send an Authorization header, so the client opens the stream with
+  // ?ticket=<short-lived>. Session tokens still work for compatibility.
+  route(
+    'post',
+    '/realtime/ticket',
+    async (req, res) => {
+      res.json({ ticket: issueTicket((req as Authed).user.id), expires_in: ticketTtlMs / 1000 });
+    },
+    true,
+  );
+
+  // Real-time Event Stream (Server-Sent Events). The stream is an
+  // enhancement only: workspace loading and auth never depend on it.
+  app.get('/api/realtime/stream', async (req, res) => {
+    let userId: string | null = null;
+    try {
+      userId = await streamIdentity(req);
+    } catch {
+      userId = null;
+    }
+    if (!userId) {
+      res.status(401).json({ error: 'Sign in to access the live event stream' });
+      return;
+    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -1622,9 +1796,7 @@ export function createApp(db: Database) {
     res.flushHeaders?.();
 
     const clientId = randomBytes(16).toString('hex');
-    const _token = (req.query.token as string) || (req as Authed).cookies?.[cookieName];
-    const userId = 'user-' + clientId.slice(0, 8);
-    const orgId = req.query.orgId as string | undefined;
+    const orgId = typeof req.query.orgId === 'string' ? req.query.orgId : undefined;
 
     realtime.addClient(clientId, userId, orgId, res);
 

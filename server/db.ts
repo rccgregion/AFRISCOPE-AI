@@ -50,11 +50,22 @@ const dateFields = new Set([
   'period_end',
   'review_date',
 ]);
-const normalize = (result: QueryResult) => {
+const normalize = (result: QueryResult, queryText?: string) => {
   // pg Results always carry `rows`, but poolers (e.g. Supavisor in transaction
   // mode) can surface result shapes where `rows` is absent for DDL / multi-
   // statement batches. Treat a missing rows array as empty rather than
   // crashing on `.map` — the statement has already executed server-side.
+  // Warn (do not silently swallow) so pooler quirks stay visible in logs.
+  if (result && !('rows' in result)) {
+    console.warn(
+      JSON.stringify({
+        event: 'db.result_without_rows',
+        query: (queryText ?? '').slice(0, 200),
+        keys: Object.keys(result),
+        command: (result as { command?: string }).command ?? null,
+      }),
+    );
+  }
   const rows = result?.rows ?? [];
   return {
     ...result,
@@ -97,12 +108,29 @@ export async function createDatabase(
     } catch {
       /* leave url unchanged if it is not a parseable URL */
     }
+    // Serverless: a tiny pool (default 1) — each function instance is short
+    // lived and the pooler multiplexes connections. Prepared statements are
+    // not used (pg only names statements when `name` is passed), so this is
+    // safe with Supavisor in transaction mode (port 6543).
+    //
+    // TLS: when DATABASE_CA is set, verify the server against that CA
+    // (Supabase publishes its CA certificate). Without it we fall back to
+    // rejectUnauthorized:false — encryption without certificate validation.
+    // TODO(security): supply DATABASE_CA (Supabase CA cert) so the pooler's
+    // certificate is verified; the fallback is vulnerable to a MITM between
+    // the function and the pooler.
+    const databaseCa = process.env.DATABASE_CA;
+    const ssl = isSsl
+      ? databaseCa
+        ? { ca: databaseCa, rejectUnauthorized: true }
+        : { rejectUnauthorized: false }
+      : undefined;
     const pool = new pg.Pool({
       connectionString,
       max: options.max ?? (process.env.VERCEL ? 1 : 8),
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
-      ssl: isSsl ? { rejectUnauthorized: false } : undefined,
+      ssl,
     });
     tx = async (fn) => {
       const c = await pool.connect();
@@ -118,7 +146,7 @@ export async function createDatabase(
           const single = Array.isArray(result)
             ? (result[result.length - 1] ?? { rows: [] })
             : result;
-          return normalize(single as QueryResult);
+          return normalize(single as QueryResult, sql);
         },
       };
       try {
@@ -180,9 +208,9 @@ export async function createDatabase(
         db.transaction((t) =>
           fn({
             query: async (sql, p = []) => {
-              if (p.length) return normalize((await t.query(sql, p)) as QueryResult);
+              if (p.length) return normalize((await t.query(sql, p)) as QueryResult, sql);
               const results = await t.exec(sql);
-              return normalize((results.at(-1) || { rows: [] }) as QueryResult);
+              return normalize((results.at(-1) || { rows: [] }) as QueryResult, sql);
             },
           }),
         ),

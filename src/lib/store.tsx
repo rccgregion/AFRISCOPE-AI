@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { api } from './api';
+import { api, ensureAuth, getToken, setToken, clearToken, ApiError } from './api';
 import {
   can,
   ROLE_LABELS,
@@ -91,58 +91,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => setToast(null), 5500);
     return () => clearTimeout(timer);
   }, [toast]);
-  const ensureAuth = useCallback(async () => {
-    // Prefer GET auto-auth (GET routes are reliable on serverless; POST
-    // bodies can be flaky through the Vercel function proxy). Fall back to
-    // POST, then to demo persona.
-    const tryGet = async () => {
-      const res = await api<{ ok: boolean; token?: string }>('/auth/auto', { method: 'GET' });
-      if (res?.token) {
-        sessionStorage.setItem('afriscope_token', res.token);
-        return res.token;
-      }
-      return null;
-    };
-    try {
-      const t = await tryGet();
-      if (t) return t;
-    } catch {
-      // fall through to POST
-    }
-    try {
-      const res = await api<{ ok: boolean; token?: string }>('/auth/auto', {
-        method: 'POST',
-        body: {},
-      });
-      if (res?.token) {
-        sessionStorage.setItem('afriscope_token', res.token);
-        return res.token;
-      }
-    } catch {
-      try {
-        const demoRes = await api<{ ok: boolean; token?: string }>('/auth/demo', {
-          method: 'POST',
-          body: { role: 'programme_manager' },
-        });
-        if (demoRes?.token) {
-          sessionStorage.setItem('afriscope_token', demoRes.token);
-          return demoRes.token;
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return null;
-  }, []);
-
   const refresh = useCallback(async () => {
-    // Retry silent auto-auth + workspace load so serverless cold starts
-    // (first request pays DB init + migrations) do not strand the user on
-    // an error screen. No sign-in step is required.
+    // Authenticate only when no token is stored (api() re-authenticates once
+    // on 401). Retry the workspace load so serverless cold starts (first
+    // request pays DB init + migrations) do not strand the user on an error
+    // screen. No sign-in step is required. The stored token is never cleared
+    // here — that would mint a new token on every retry.
     let lastError: Error | null = null;
     for (let attempt = 0; attempt < 4; attempt++) {
       try {
-        if (!sessionStorage.getItem('afriscope_token')) {
+        if (!getToken()) {
           await ensureAuth();
         }
         const w = await api<Workspace>('/workspace');
@@ -158,31 +116,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return;
       } catch (e) {
         lastError = e as Error;
-        // Fresh token on retry in case the previous session expired.
+        // A 401 here means api() already cleared the token and re-authed
+        // once; retrying would just mint more tokens. Fail fast.
+        if (e instanceof ApiError && e.status === 401) break;
         if (attempt < 3) {
-          sessionStorage.removeItem('afriscope_token');
           await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
         }
       }
     }
     setError(lastError?.message || 'Workspace connection failed.');
     setLoading(false);
-  }, [projectId, ensureAuth]);
+  }, [projectId]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  // Live updates are an enhancement only: workspace loading and auth never
+  // depend on the stream. Serverless functions cannot hold a long-lived
+  // connection, so the client reconnects with exponential backoff and falls
+  // back to polling /api/workspace every 15s after 3 consecutive failures.
   useEffect(() => {
     let es: EventSource | null = null;
     let retryTimeout: NodeJS.Timeout | null = null;
+    let pollTimeout: NodeJS.Timeout | null = null;
+    let failures = 0;
+    let closed = false;
 
-    const connectSse = () => {
+    const schedulePoll = () => {
+      if (closed) return;
+      setRealtimeConnected(false);
+      const tick = async () => {
+        if (closed) return;
+        try {
+          const w = await api<Workspace>('/workspace');
+          setWorkspace(w);
+        } catch {
+          // keep polling; refresh() surfaces hard failures in the banner
+        }
+        pollTimeout = setTimeout(tick, 15000);
+      };
+      pollTimeout = setTimeout(tick, 15000);
+    };
+
+    const connectSse = async () => {
+      if (closed) return;
+      if (failures >= 3) {
+        schedulePoll();
+        return;
+      }
       try {
-        const token = sessionStorage.getItem('afriscope_token') || '';
-        const url = `/api/realtime/stream?token=${encodeURIComponent(token)}`;
+        // EventSource cannot send an Authorization header, so exchange the
+        // session for a short-lived (5 min) realtime ticket. If the exchange
+        // fails, fall back to the session token in the query string.
+        let ticket = '';
+        try {
+          const res = await api<{ ticket?: string }>('/realtime/ticket', {
+            method: 'POST',
+            body: {},
+          });
+          ticket = res?.ticket || '';
+        } catch {
+          ticket = '';
+        }
+        const credential = ticket || getToken() || '';
+        const url = `/api/realtime/stream?${ticket ? 'ticket' : 'token'}=${encodeURIComponent(credential)}`;
         es = new EventSource(url);
 
         es.onopen = () => {
+          failures = 0;
           setRealtimeConnected(true);
         };
 
@@ -213,18 +214,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         es.onerror = () => {
           setRealtimeConnected(false);
           es?.close();
-          retryTimeout = setTimeout(connectSse, 5000);
+          failures += 1;
+          // 2s, 4s, 8s … capped at 30s; after 3 failures switch to polling.
+          const delay = Math.min(2000 * 2 ** (failures - 1), 30000);
+          retryTimeout = setTimeout(() => void connectSse(), delay);
         };
       } catch {
         setRealtimeConnected(false);
+        failures += 1;
+        retryTimeout = setTimeout(() => void connectSse(), 5000);
       }
     };
 
-    connectSse();
+    void connectSse();
 
     return () => {
+      closed = true;
       es?.close();
       if (retryTimeout) clearTimeout(retryTimeout);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [notify, refresh]);
 
@@ -242,7 +250,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     } finally {
-      sessionStorage.removeItem('afriscope_token');
+      clearToken();
       await refresh();
       notify('Workspace session reset to default');
     }
@@ -254,7 +262,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         body: { role: newRole },
       });
       if (res.token) {
-        sessionStorage.setItem('afriscope_token', res.token);
+        setToken(res.token);
       }
       await refresh();
       notify(`Switched demonstration persona to ${ROLE_LABELS[newRole] || newRole}`);
