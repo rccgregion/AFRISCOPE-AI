@@ -50,17 +50,24 @@ const dateFields = new Set([
   'period_end',
   'review_date',
 ]);
-const normalize = (result: QueryResult) => ({
-  ...result,
-  rows: result.rows.map((row) =>
-    Object.fromEntries(
-      Object.entries(row).map(([k, v]) => [
-        k,
-        v instanceof Date && dateFields.has(k) ? v.toISOString().slice(0, 10) : v,
-      ]),
+const normalize = (result: QueryResult) => {
+  // pg Results always carry `rows`, but poolers (e.g. Supavisor in transaction
+  // mode) can surface result shapes where `rows` is absent for DDL / multi-
+  // statement batches. Treat a missing rows array as empty rather than
+  // crashing on `.map` — the statement has already executed server-side.
+  const rows = result?.rows ?? [];
+  return {
+    ...result,
+    rows: rows.map((row) =>
+      Object.fromEntries(
+        Object.entries(row ?? {}).map(([k, v]) => [
+          k,
+          v instanceof Date && dateFields.has(k) ? v.toISOString().slice(0, 10) : v,
+        ]),
+      ),
     ),
-  ),
-});
+  };
+};
 export async function createDatabase(
   options: { path?: string; url?: string; migrate?: boolean; max?: number } = {},
 ): Promise<Database> {
