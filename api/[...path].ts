@@ -31,6 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           ? 'The API database is not configured or unavailable. Check DATABASE_URL/POSTGRES_URL, apply migrations, and review Vercel function logs.'
           : 'The API request could not be completed.',
       detail: message,
+      // Temporary diagnostics: surface the stack so the failing call site can
+      // be pinpointed from the outside. Remove once initialise is healthy.
+      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 }
