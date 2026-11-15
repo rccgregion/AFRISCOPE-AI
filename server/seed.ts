@@ -160,21 +160,21 @@ export async function seedDemo(db: Database, reset = false) {
         {
           title: 'Medicine Availability Intelligence',
           sector: 'Public health',
-          countries: 'Kijani Republic · Umoja Federation',
+          countries: 'Nigeria',
           description:
-            'Anticipate essential medicine stockouts and review evidence-backed redistribution opportunities.',
+            'Anticipate essential medicine stockouts and review evidence-backed redistribution opportunities. Facility names are real Nigerian public hospitals; all quantities are synthetic demonstration data.',
         },
         {
           title: 'Public Finance Flow Intelligence',
           sector: 'Public finance',
-          countries: 'Kijani Republic · Umoja Federation',
+          countries: 'Nigeria',
           description:
             'Connect budgets, releases, procurement and expenditure without conflating financial events.',
         },
         {
           title: 'Health Intervention Prioritisation',
           sector: 'Public health',
-          countries: 'Kijani Republic',
+          countries: 'Nigeria',
           description:
             'Compare feasible intervention packages under explicit budget, equity and delivery constraints.',
         },
@@ -265,14 +265,14 @@ export async function seedDemo(db: Database, reset = false) {
           kind.replaceAll('_', ' ').replace(/^./, (s) => s.toUpperCase()) +
           ' · synthetic demonstration',
         description:
-          'Fixed seed 20260930. Fictional countries and facilities. No real government, patient or financial records.',
+          'Fixed seed 20260930. Facility names are real Nigerian public hospitals; all stock, consumption and financial figures are synthetic demonstration data, not real facility records. No endorsement or coverage claim is made for any named facility or funder.',
         source: 'scripts/generate_demo_data.py',
         owner: 'AfriScope demonstration data steward',
         sensitivity: 'Synthetic public',
         quality_status: 'Validated',
         reporting_period:
           kind === 'inventory' ? '2025-10-08 — 2026-09-30' : '2026-Q3 / planning assumptions',
-        geographic_coverage: 'Kijani Republic and Umoja Federation (fictional)',
+        geographic_coverage: 'Nigeria (named hospitals; synthetic figures)',
         lineage: 'Deterministic generator → clean CSV → validated relational seed',
         kind,
       });
@@ -811,9 +811,9 @@ async function seedNarrative(
     content: {
       problem:
         'Facility teams lack a timely, shared view of stockout risk and feasible redistribution.',
-      countries: 'Kijani Republic; Umoja Federation (fictional)',
-      region: 'Northern and Central Zones',
-      population: 'Synthetic facility catchments',
+      countries: 'Nigeria',
+      region: 'North Central, South West, South East, South South and North West zones',
+      population: 'Synthetic facility catchments (named hospitals; synthetic figures)',
       current_workflow: 'Weekly facility reports reviewed manually.',
       existing_intervention: 'Periodic stock review and scheduled deliveries.',
       pain_points: 'Late reports, incompatible units, delayed replenishment.',
@@ -854,7 +854,10 @@ async function seedNarrative(
         'Verified physical counts',
         'Consent and legal basis for real data',
       ],
-      assumptions: ['All countries, facilities, counts and costs are synthetic.'],
+      assumptions: [
+        'Facility names are real Nigerian public hospitals; all counts, costs and outcomes are synthetic demonstration data.',
+        'No endorsement, partnership or coverage claim is made for any named facility or funder.',
+      ],
     },
   });
   await insert(c, 'requirements_documents', {

@@ -38,115 +38,119 @@ export interface GisTransferRoute {
   toCoord: [number, number];
 }
 
+// Nigerian geopolitical zones with approximate demonstration polygons.
+// Polygons are schematic (for map display only) and do not represent
+// official administrative boundaries.
 export const DISTRICT_BOUNDARIES: GisDistrict[] = [
   {
     id: 'dist-01',
-    name: 'Mtoni North District',
-    region: 'Northern Zone',
-    country: 'Kijani Republic',
-    population: 285000,
+    name: 'North Central Zone',
+    region: 'North Central',
+    country: 'Nigeria',
+    population: 28500000,
     healthZone: 'Zone A - High Priority',
-    center: [36.68, -3.37],
+    center: [7.8, 9.0],
     coordinates: [
       [
-        [36.50, -3.20],
-        [36.85, -3.20],
-        [36.90, -3.50],
-        [36.55, -3.55],
-        [36.50, -3.20],
+        [6.5, 10.2],
+        [9.5, 10.2],
+        [9.5, 7.8],
+        [6.5, 7.8],
+        [6.5, 10.2],
       ],
     ],
-    facilities: ['FAC-001', 'FAC-004'],
+    facilities: ['F001', 'F002', 'F009', 'F012'],
   },
   {
     id: 'dist-02',
-    name: 'Kijiji Central District',
-    region: 'Central Zone',
-    country: 'Kijani Republic',
-    population: 410000,
+    name: 'South West Zone',
+    region: 'South West',
+    country: 'Nigeria',
+    population: 41000000,
     healthZone: 'Zone B - Supply Buffer',
-    center: [35.75, -6.17],
+    center: [4.5, 7.0],
     coordinates: [
       [
-        [35.50, -5.95],
-        [36.00, -5.95],
-        [36.05, -6.40],
-        [35.55, -6.40],
-        [35.50, -5.95],
+        [2.5, 8.2],
+        [6.5, 8.2],
+        [6.5, 5.8],
+        [2.5, 5.8],
+        [2.5, 8.2],
       ],
     ],
-    facilities: ['FAC-002', 'FAC-005', 'FAC-006'],
+    facilities: ['F003', 'F004'],
   },
   {
     id: 'dist-03',
-    name: 'Nyota Coastal District',
-    region: 'Coastal Zone',
-    country: 'Kijani Republic',
-    population: 530000,
+    name: 'South East Zone',
+    region: 'South East',
+    country: 'Nigeria',
+    population: 17000000,
     healthZone: 'Zone C - Regional Hub',
-    center: [39.20, -6.80],
+    center: [7.0, 6.2],
     coordinates: [
       [
-        [38.90, -6.50],
-        [39.50, -6.50],
-        [39.45, -7.10],
-        [38.85, -7.05],
-        [38.90, -6.50],
+        [6.2, 7.0],
+        [8.2, 7.0],
+        [8.2, 5.4],
+        [6.2, 5.4],
+        [6.2, 7.0],
       ],
     ],
-    facilities: ['FAC-003', 'FAC-007'],
+    facilities: ['F005'],
   },
   {
     id: 'dist-04',
-    name: 'Baraka Western District',
-    region: 'Lake Victoria Basin',
-    country: 'Umoja Federation',
-    population: 340000,
+    name: 'South South Zone',
+    region: 'South South',
+    country: 'Nigeria',
+    population: 26000000,
     healthZone: 'Zone D - Vulnerable Basin',
-    center: [32.90, -2.52],
+    center: [6.5, 5.0],
     coordinates: [
       [
-        [32.60, -2.25],
-        [33.25, -2.25],
-        [33.20, -2.85],
-        [32.55, -2.80],
-        [32.60, -2.25],
+        [4.5, 6.0],
+        [8.8, 6.0],
+        [8.8, 4.2],
+        [4.5, 4.2],
+        [4.5, 6.0],
       ],
     ],
-    facilities: ['FAC-008', 'FAC-009'],
+    facilities: ['F006', 'F010', 'F011'],
   },
   {
     id: 'dist-05',
-    name: 'Tumaini Southern District',
-    region: 'Southern Highlands',
-    country: 'Umoja Federation',
-    population: 295000,
+    name: 'North West Zone',
+    region: 'North West',
+    country: 'Nigeria',
+    population: 35000000,
     healthZone: 'Zone E - Mountain Access',
-    center: [34.70, -8.85],
+    center: [8.0, 11.5],
     coordinates: [
       [
-        [34.30, -8.50],
-        [35.10, -8.50],
-        [35.05, -9.20],
-        [34.35, -9.15],
-        [34.30, -8.50],
+        [5.5, 13.2],
+        [10.5, 13.2],
+        [10.5, 9.8],
+        [5.5, 9.8],
+        [5.5, 13.2],
       ],
     ],
-    facilities: ['FAC-010', 'FAC-011', 'FAC-012'],
+    facilities: ['F007', 'F008'],
   },
 ];
 
+// Approximate city coordinates [lng, lat] for the named hospitals.
 export const FACILITY_COORDINATES: Record<string, [number, number]> = {
-  'FAC-001': [36.68, -3.37], // Mtoni Clinic
-  'FAC-002': [35.75, -6.17], // Kijiji Clinic
-  'FAC-003': [39.20, -6.80], // Nyota Health Centre
-  'FAC-004': [36.72, -3.42], // Baraka District Hospital
-  'FAC-005': [35.70, -6.22], // Ushindi Dispensary
-  'FAC-006': [35.80, -6.12], // Amani Health Centre
-  'FAC-007': [39.15, -6.75], // Pwani Regional Hospital
-  'FAC-008': [32.90, -2.52], // Imani Health Centre
-  'FAC-009': [32.95, -2.48], // Tumaini Referral Hospital
-  'FAC-010': [34.70, -8.85], // Neema Dispensary
-  'FAC-011': [34.75, -8.80], // Faraja Health Post
-  'FAC-012': [34.65, -8.90], // Upendo Clinic
+  'F001': [7.495, 9.057], // National Hospital Abuja
+  'F002': [7.08, 8.94], // University of Abuja Teaching Hospital, Gwagwalada
+  'F003': [3.36, 6.45], // Lagos University Teaching Hospital, Idi-Araba
+  'F004': [3.91, 7.4], // University College Hospital Ibadan
+  'F005': [7.5, 6.45], // University of Nigeria Teaching Hospital, Ituku-Ozalla
+  'F006': [5.61, 6.33], // University of Benin Teaching Hospital
+  'F007': [8.52, 12.0], // Aminu Kano University Teaching Hospital
+  'F008': [7.71, 11.07], // Ahmadu Bello University Teaching Hospital, Zaria
+  'F009': [8.89, 9.93], // Jos University Teaching Hospital
+  'F010': [8.32, 4.95], // University of Calabar Teaching Hospital
+  'F011': [7.01, 4.85], // University of Port Harcourt Teaching Hospital
+  'F012': [7.49, 9.06], // Federal Medical Centre Abuja
 };

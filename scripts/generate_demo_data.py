@@ -19,10 +19,26 @@ def write(name, rows):
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader(); w.writerows(rows)
 
-facilities = []
-for i in range(1, 13):
-    country = 'Kijani Republic' if i <= 6 else 'Umoja Federation'
-    facilities.append(dict(external_id=f'F{i:03}', name=f'{["Mtoni", "Kijiji", "Nyota", "Msitu", "Upendo", "Amani"][i-1] if i<=6 else ["Baraka", "Nuru", "Furaha", "Tumaini", "Imani", "Pamoja"][i-7]} {"Clinic" if i%3 else "Health Centre"}', country=country, region='Northern Zone' if i%2 else 'Central Zone', district=f'District {(i-1)//2+1}', facility_type='Health centre' if i%3==0 else 'Clinic'))
+# Real Nigerian public teaching hospitals / federal medical centres.
+# Names, states and geopolitical zones are real and publicly documented
+# (Federal Ministry of Health teaching-hospital network). All stock,
+# consumption, delivery and financial figures generated below are synthetic
+# demonstration data and must never be read as real facility records.
+REAL_FACILITIES = [
+    ('F001', 'National Hospital Abuja', 'North Central', 'Abuja FCT', 'Teaching hospital'),
+    ('F002', 'University of Abuja Teaching Hospital', 'North Central', 'Gwagwalada', 'Teaching hospital'),
+    ('F003', 'Lagos University Teaching Hospital', 'South West', 'Idi-Araba', 'Teaching hospital'),
+    ('F004', 'University College Hospital Ibadan', 'South West', 'Ibadan', 'Teaching hospital'),
+    ('F005', 'University of Nigeria Teaching Hospital', 'South East', 'Ituku-Ozalla', 'Teaching hospital'),
+    ('F006', 'University of Benin Teaching Hospital', 'South South', 'Benin City', 'Teaching hospital'),
+    ('F007', 'Aminu Kano University Teaching Hospital', 'North West', 'Kano', 'Teaching hospital'),
+    ('F008', 'Ahmadu Bello University Teaching Hospital', 'North West', 'Zaria', 'Teaching hospital'),
+    ('F009', 'Jos University Teaching Hospital', 'North Central', 'Jos', 'Teaching hospital'),
+    ('F010', 'University of Calabar Teaching Hospital', 'South South', 'Calabar', 'Teaching hospital'),
+    ('F011', 'University of Port Harcourt Teaching Hospital', 'South South', 'Port Harcourt', 'Teaching hospital'),
+    ('F012', 'Federal Medical Centre Abuja', 'North Central', 'Abuja FCT', 'Federal medical centre'),
+]
+facilities = [dict(external_id=eid, name=name, country='Nigeria', region=region, district=district, facility_type=ftype) for eid, name, region, district, ftype in REAL_FACILITIES]
 write('facilities.csv', facilities)
 products = [dict(external_id='MED001', name='Amoxicillin 500 mg', unit='capsules', minimum_days=14, near_expiry_days=60), dict(external_id='MED002', name='Oral rehydration salts', unit='sachets', minimum_days=14, near_expiry_days=60), dict(external_id='MED003', name='Paracetamol 500 mg', unit='tablets', minimum_days=14, near_expiry_days=60), dict(external_id='MED004', name='Artemether / lumefantrine', unit='tablets', minimum_days=14, near_expiry_days=60)]
 write('medicine_products.csv', products)
@@ -71,11 +87,11 @@ for i,(code,name,currency,amount) in enumerate(programmes):
 expenditure.append(dict(external_id='EXP-UNMATCHED', programme_code='PRG-UNKNOWN', budget_id='', event_type='Payment', currency='NGN', amount=1750000, transaction_date=AS_OF.isoformat(), period='2026-Q3', reference='MISSING-PO', description='Synthetic unmatched payment for reconciliation testing'))
 for name, rows in [('budgets',budgets),('funding_releases',releases),('procurement_events',procurement),('expenditure_records',expenditure)]: write(name+'.csv',rows)
 options=[]
-intervention_data=[('Community outreach packs',35000,2400,'Rural','Northern Zone',2,[]),('Facility stock visibility',48000,3100,'All facilities','Central Zone',3,[]),('Community health worker training',60000,4200,'Rural','Northern Zone',4,[]),('Cold-chain maintenance',72000,2800,'Facility staff','Central Zone',3,[]),('Integrated supply deliveries',55000,3700,'All facilities','Northern Zone',3,['opt-2']),('Remote mentoring',24000,1500,'Rural','Central Zone',2,[]),('Facility supervision visits',30000,1900,'Facility staff','Northern Zone',2,[]),('Demand planning workshops',20000,1100,'All facilities','Central Zone',2,[])]
+intervention_data=[('Community outreach packs',35000,2400,'Rural','North Central',2,[]),('Facility stock visibility',48000,3100,'All facilities','South West',3,[]),('Community health worker training',60000,4200,'Rural','North Central',4,[]),('Cold-chain maintenance',72000,2800,'Facility staff','South West',3,[]),('Integrated supply deliveries',55000,3700,'All facilities','North Central',3,['opt-2']),('Remote mentoring',24000,1500,'Rural','South West',2,[]),('Facility supervision visits',30000,1900,'Facility staff','North Central',2,[]),('Demand planning workshops',20000,1100,'All facilities','South West',2,[])]
 for i,(name,cost,outcome,equity,geo,months,deps) in enumerate(intervention_data,1):
     options.append(dict(id=f'opt-{i}',name=name,target_population='Synthetic catchment population',geography=geo,cost=cost,currency='USD',unit_cost=round(cost/outcome,2),expected_outcome=outcome,outcome_unit='People reached (assumed)',evidence_source='Synthetic planning assumption; not a clinical estimate',evidence_quality='Unverified demonstration assumption',capacity=outcome,implementation_months=months,constraints='One discrete delivery package; no double counting adjustment available',equity_group=equity,dependencies=json.dumps(deps)))
 write('intervention_options.csv',options)
-write('budget_scenarios.csv',[dict(name=n,budget=b,equity_minimum=2,max_months=4,required_geographies=json.dumps(['Northern Zone','Central Zone'])) for n,b in [('Essential coverage',90000),('Balanced scale-up',160000),('Expanded delivery',230000)]])
+write('budget_scenarios.csv',[dict(name=n,budget=b,equity_minimum=2,max_months=4,required_geographies=json.dumps(['North Central','South West'])) for n,b in [('Essential coverage',90000),('Balanced scale-up',160000),('Expanded delivery',230000)]])
 # Defects are quarantined in a separate upload fixture, never seeded into clean results.
 defects=[dict(r) for r in inventory[:8]]
 defects[0]['closing_stock']=-4
@@ -87,5 +103,5 @@ defects[5]['expiry_date']='2025-01-01'
 defects[6]=dict(defects[5])
 defects[7]['usable_stock']=999999
 write('inventory_defects.csv',defects)
-(OUT/'manifest.json').write_text(json.dumps({'seed':20260930,'as_of':AS_OF.isoformat(),'organisation_id':ORG,'project_ids':PROJECTS,'synthetic':True,'counts':{p.name:p.read_text().count('\n')-1 for p in OUT.glob('*.csv')},'limitations':['Fictional countries, facilities, programmes and assumptions.','Weekly consumption is censored during stockouts; it is not uncensored demand.','No exchange rates, clinical effect estimates, or real personal data.']},indent=2)+'\n')
+(OUT/'manifest.json').write_text(json.dumps({'seed':20260930,'as_of':AS_OF.isoformat(),'organisation_id':ORG,'project_ids':PROJECTS,'synthetic':True,'counts':{p.name:p.read_text().count('\n')-1 for p in OUT.glob('*.csv')},'limitations':['Facility names are real Nigerian public hospitals; all stock, consumption, delivery and financial figures are synthetic demonstration data, not real facility records.','No endorsement, partnership or coverage claim is made for any named facility or funder.','Weekly consumption is censored during stockouts; it is not uncensored demand.','No exchange rates, clinical effect estimates, or real personal data.']},indent=2)+'\n')
 print(json.dumps({'seed':20260930,'inventory_rows':len(inventory),'files':len(list(OUT.glob('*.csv')))}))

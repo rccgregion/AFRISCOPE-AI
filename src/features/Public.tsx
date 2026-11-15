@@ -126,9 +126,9 @@ export function Landing() {
                   <span>Method: usable stock / consumption</span>
                 </div>
                 {[
-                  ['Mtoni Clinic', 'Amoxicillin 500 mg', 'Verify stock'],
-                  ['Kijiji Clinic', 'Amoxicillin 500 mg', 'Review transfer'],
-                  ['Nyota Clinic', 'Amoxicillin 500 mg', 'Check expiry'],
+                  ['National Hospital Abuja', 'Amoxicillin 500 mg', 'Verify stock'],
+                  ['Lagos University Teaching Hospital', 'Amoxicillin 500 mg', 'Review transfer'],
+                  ['University College Hospital Ibadan', 'Amoxicillin 500 mg', 'Check expiry'],
                 ].map(([a, b, c]) => (
                   <div key={a}>
                     <span className="preview-facility">

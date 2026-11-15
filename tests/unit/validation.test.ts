@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { validateRows, qualityReport } from '../../server/validation';
 import { answerSchema, localAnswer, validateGrounding } from '../../server/assistant';
 const refs = {
-  facilities: new Map([['F001', { id: 'f1', country: 'Kijani Republic' }]]),
+  facilities: new Map([['F001', { id: 'f1', country: 'Nigeria' }]]),
   products: new Map([['MED001', { id: 'p1', unit: 'capsules' }]]),
   budgets: new Map([['B1', { id: 'b1', currency: 'NGN', programme_code: 'P1' }]]),
 };

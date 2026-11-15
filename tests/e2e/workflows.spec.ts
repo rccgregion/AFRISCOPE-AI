@@ -47,7 +47,7 @@ test('stock filters, source detail, and CSV export work', async ({ page }) => {
   await page.goto('/operations');
   await page.getByRole('combobox', { name: 'Risk level', exact: true }).selectOption('Critical');
   await expect(page.getByRole('table', { name: 'Facility stock records' })).toContainText(
-    'Baraka Clinic',
+    'Aminu Kano University Teaching Hospital',
   );
   await expect(page.getByRole('table', { name: 'Facility stock records' })).not.toContainText(
     'Stable',
@@ -57,7 +57,7 @@ test('stock filters, source detail, and CSV export work', async ({ page }) => {
   expect((await download).suggestedFilename()).toBe('medicine-coverage.csv');
   await page
     .getByRole('table', { name: 'Facility stock records' })
-    .getByText('Baraka Clinic')
+    .getByText('Aminu Kano University Teaching Hospital')
     .click();
   await expect(page.getByRole('dialog')).toContainText('Usable stock');
 });
