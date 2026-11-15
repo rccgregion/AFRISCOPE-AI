@@ -295,7 +295,22 @@ export function createApp(db: Database) {
     'get',
     '/health',
     async (_req, res) => {
-      await db.admin((c) => c.query('select 1'));
+      // Liveness + readiness: the database must answer SELECT 1, otherwise
+      // the deployment is unusable and we say so with 503.
+      try {
+        await db.admin((c) => c.query('select 1'));
+      } catch (error) {
+        const detail = (error instanceof Error ? error.message : String(error))
+          .replace(/:\/\/[^@\s]+@/g, '://[redacted]@')
+          .slice(0, 300);
+        res.status(503).json({
+          status: 'unavailable',
+          database: 'unreachable',
+          supabase: await supabaseStatus().catch(() => 'unknown'),
+          detail,
+        });
+        return;
+      }
       res.json({
         status: 'ok',
         database: 'PostgreSQL / PGlite or configured PostgreSQL',

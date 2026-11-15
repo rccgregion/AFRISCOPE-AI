@@ -108,12 +108,29 @@ export async function createDatabase(
     } catch {
       /* leave url unchanged if it is not a parseable URL */
     }
+    // Serverless: a tiny pool (default 1) — each function instance is short
+    // lived and the pooler multiplexes connections. Prepared statements are
+    // not used (pg only names statements when `name` is passed), so this is
+    // safe with Supavisor in transaction mode (port 6543).
+    //
+    // TLS: when DATABASE_CA is set, verify the server against that CA
+    // (Supabase publishes its CA certificate). Without it we fall back to
+    // rejectUnauthorized:false — encryption without certificate validation.
+    // TODO(security): supply DATABASE_CA (Supabase CA cert) so the pooler's
+    // certificate is verified; the fallback is vulnerable to a MITM between
+    // the function and the pooler.
+    const databaseCa = process.env.DATABASE_CA;
+    const ssl = isSsl
+      ? databaseCa
+        ? { ca: databaseCa, rejectUnauthorized: true }
+        : { rejectUnauthorized: false }
+      : undefined;
     const pool = new pg.Pool({
       connectionString,
       max: options.max ?? (process.env.VERCEL ? 1 : 8),
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
-      ssl: isSsl ? { rejectUnauthorized: false } : undefined,
+      ssl,
     });
     tx = async (fn) => {
       const c = await pool.connect();
