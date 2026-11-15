@@ -65,6 +65,23 @@ export function createApp(db: Database) {
   const app = express();
   app.set('trust proxy', true);
   app.disable('x-powered-by');
+  // Vercel rewrite compatibility: the /api/(.*) rewrite targets the single
+  // api/index function. When the original path is carried as ?__path=...,
+  // remove that internal parameter so handlers only see real query
+  // parameters. req.query is derived from req.url, so rewrite the URL.
+  app.use((req, _res, next) => {
+    const query = req.query as Record<string, unknown> | undefined;
+    if (query && '__path' in query) {
+      try {
+        const url = new URL(req.url, 'http://internal');
+        url.searchParams.delete('__path');
+        req.url = url.pathname + url.search;
+      } catch {
+        // Leave the URL untouched if it cannot be parsed.
+      }
+    }
+    next();
+  });
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
   app.use((req, res, next) => {
@@ -194,21 +211,36 @@ export function createApp(db: Database) {
     },
     false,
   );
+  const demoRole = (body: unknown) =>
+    z
+      .enum([
+        'programme_manager',
+        'data_analyst',
+        'operator',
+        'reviewer',
+        'executive',
+        'organisation_admin',
+      ])
+      .parse((body as { role?: string } | undefined)?.role || 'programme_manager');
   route(
     'post',
     '/auth/demo',
     async (req, res) => {
       if (process.env.DEMO_ENABLED === 'false') throw httpError(403, 'Demo access is disabled');
-      const role = z
-        .enum([
-          'programme_manager',
-          'data_analyst',
-          'operator',
-          'reviewer',
-          'executive',
-          'organisation_admin',
-        ])
-        .parse(req.body.role || 'programme_manager');
+      const role = demoRole(req.body);
+      const token = await session(req, res, demoUserId(role));
+      res.json({ ok: true, role, token });
+    },
+    false,
+  );
+  // GET fallback for clients that cannot send a POST body (e.g. EventSource
+  // style flows). POST remains the primary demo-auth path.
+  route(
+    'get',
+    '/auth/demo',
+    async (req, res) => {
+      if (process.env.DEMO_ENABLED === 'false') throw httpError(403, 'Demo access is disabled');
+      const role = demoRole(req.query);
       const token = await session(req, res, demoUserId(role));
       res.json({ ok: true, role, token });
     },
