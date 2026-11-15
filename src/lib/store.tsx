@@ -119,30 +119,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    try {
-      let w: Workspace;
+    // Retry silent auto-auth + workspace load so serverless cold starts
+    // (first request pays DB init + migrations) do not strand the user on
+    // an error screen. No sign-in step is required.
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
       try {
         if (!sessionStorage.getItem('afriscope_token')) {
           await ensureAuth();
         }
-        w = await api<Workspace>('/workspace');
-      } catch {
-        await ensureAuth();
-        w = await api<Workspace>('/workspace');
+        const w = await api<Workspace>('/workspace');
+        setWorkspace(w);
+        const chosen = w.projects.find((p) => p.id === projectId) || w.projects[0];
+        if (chosen) {
+          setProjectId(chosen.id);
+          localStorage.setItem('afriscope-project', chosen.id);
+          setData(await api<ProjectData>('/projects/' + chosen.id));
+        } else setData(null);
+        setError('');
+        setLoading(false);
+        return;
+      } catch (e) {
+        lastError = e as Error;
+        // Fresh token on retry in case the previous session expired.
+        if (attempt < 3) {
+          sessionStorage.removeItem('afriscope_token');
+          await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+        }
       }
-      setWorkspace(w);
-      const chosen = w.projects.find((p) => p.id === projectId) || w.projects[0];
-      if (chosen) {
-        setProjectId(chosen.id);
-        localStorage.setItem('afriscope-project', chosen.id);
-        setData(await api<ProjectData>('/projects/' + chosen.id));
-      } else setData(null);
-      setError('');
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
     }
+    setError(lastError?.message || 'Workspace connection failed.');
+    setLoading(false);
   }, [projectId, ensureAuth]);
   useEffect(() => {
     void refresh();
