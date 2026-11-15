@@ -2,11 +2,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { Request, Response } from 'express';
 import { getVercelApp } from '../server/vercel.js';
 
+/**
+ * Single Vercel function for ALL /api/* routes.
+ *
+ * Outside Next.js, Vercel compiles api/[...path].ts as a single-segment
+ * route (^/api/([^/]+)$), so nested paths like /api/auth/auto fall through
+ * to Vercel's built-in 404. vercel.json rewrites /api/(.*) to /api (this
+ * function) instead; the function receives the original URL, so Express
+ * routes exactly as in local development.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const app = await getVercelApp();
-    normalisePath(req);
-    // Vercel may already have parsed JSON bodies; prevent body-parser from re-reading a consumed stream.
+    // Vercel may already have parsed JSON bodies; prevent body-parser from
+    // re-reading a consumed stream.
     if (req.body !== undefined) {
       (req as unknown as Request).body = req.body;
       (req as unknown as Request & { _body?: boolean })._body = true;
@@ -45,21 +54,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       stack,
     });
   }
-}
-
-function normalisePath(req: VercelRequest) {
-  const raw = req.url || '/';
-  const url = new URL(raw, 'http://vercel.local');
-  if (url.pathname.startsWith('/api/') && !url.pathname.includes('[...path]')) return;
-  const path = req.query.path;
-  const segments = Array.isArray(path) ? path.join('/') : path ? String(path) : '';
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(req.query)) {
-    if (key === 'path') continue;
-    if (Array.isArray(value)) for (const v of value) query.append(key, String(v));
-    else if (value !== undefined) query.append(key, String(value));
-  }
-  url.pathname = '/api/' + segments;
-  url.search = query.toString();
-  req.url = url.pathname + (url.search ? '?' + url.search : '');
 }
