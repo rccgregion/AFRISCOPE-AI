@@ -79,8 +79,19 @@ export async function createDatabase(
       url.includes('supabase.co') ||
       url.includes('pooler.supabase.com') ||
       url.includes('neon.tech');
+    // Strip sslmode from the URL: pg-connection-string maps sslmode=require to
+    // verify-full, which overrides our explicit ssl config and fails against
+    // pooler (Supavisor) certificates. We control SSL explicitly below.
+    let connectionString = url;
+    try {
+      const parsed = new URL(url);
+      parsed.searchParams.delete('sslmode');
+      connectionString = parsed.toString();
+    } catch {
+      /* leave url unchanged if it is not a parseable URL */
+    }
     const pool = new pg.Pool({
-      connectionString: url,
+      connectionString,
       max: options.max ?? (process.env.VERCEL ? 1 : 8),
       connectionTimeoutMillis: 10000,
       statement_timeout: 30000,
