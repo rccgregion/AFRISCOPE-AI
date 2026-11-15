@@ -29,6 +29,36 @@ export async function insert(c: Client, table: string, data: Record<string, unkn
   );
   return result.rows[0];
 }
+/**
+ * Multi-row insert used for bulk seed tables (inventory, consumption) where
+ * the returned id is not needed. Chunked to stay well under PostgreSQL's
+ * 65535-parameter limit and to keep each statement small. All rows must share
+ * the same keys as the first row.
+ */
+export async function insertMany(c: Client, table: string, data: Record<string, unknown>[]) {
+  if (!data.length) return [];
+  const keys = Object.keys(data[0]);
+  const CHUNK = 400;
+  const allRows: Record<string, unknown>[] = [];
+  for (let start = 0; start < data.length; start += CHUNK) {
+    const chunk = data.slice(start, start + CHUNK);
+    const values: unknown[] = [];
+    const tuples = chunk.map((row, i) => {
+      const placeholders = keys.map((_, j) => `$${i * keys.length + j + 1}`);
+      for (const k of keys) {
+        const v = row[k];
+        values.push(v !== null && typeof v === 'object' ? JSON.stringify(v) : v);
+      }
+      return `(${placeholders.join(',')})`;
+    });
+    const result = await c.query(
+      `insert into ${table}(${keys.join(',')}) values ${tuples.join(',')} returning *`,
+      values,
+    );
+    allRows.push(...result.rows);
+  }
+  return allRows;
+}
 const base = (project: string) => ({
   organisation_id: DEMO_ORG,
   project_id: project,
@@ -333,12 +363,17 @@ export async function seedDemo(db: Database, reset = false) {
           ? plan
           : med;
       const version = versions.get(kind);
+      // Bulk tables (inventory, consumption) are collected and inserted in
+      // batches — one round-trip per row would exceed serverless time limits
+      // against a networked database. Their returned ids are not referenced.
+      const inventoryBatch: Record<string, unknown>[] = [];
+      const consumptionBatch: Record<string, unknown>[] = [];
       for (const [index, r] of rows(kind).entries()) {
         const common = { ...base(project), version_id: version, source_row: index + 2 };
         if (kind === 'inventory') {
           const d = new Date(r.reporting_date + 'T12:00:00Z');
           d.setUTCDate(d.getUTCDate() - 6);
-          await insert(c, 'inventory_records', {
+          inventoryBatch.push({
             ...common,
             facility_id: facilityIds.get(r.facility_id),
             product_id: productIds.get(r.product_id),
@@ -366,7 +401,7 @@ export async function seedDemo(db: Database, reset = false) {
           });
         }
         if (kind === 'consumption')
-          await insert(c, 'consumption_records', {
+          consumptionBatch.push({
             ...common,
             facility_id: facilityIds.get(r.facility_id),
             product_id: productIds.get(r.product_id),
@@ -444,6 +479,8 @@ export async function seedDemo(db: Database, reset = false) {
             description: r.description,
           });
       }
+      if (inventoryBatch.length) await insertMany(c, 'inventory_records', inventoryBatch);
+      if (consumptionBatch.length) await insertMany(c, 'consumption_records', consumptionBatch);
     }
     return false;
   });
