@@ -31,8 +31,12 @@ async function initialise(): Promise<Express> {
     );
   }
   const db = await createDatabase({ url, max: 1 });
-  // Demo seeding is opt-in on serverless because it is a large one-time write.
-  if (process.env.DEMO_ENABLED === 'true' && process.env.VERCEL_SEED_DEMO === 'true') {
+  // Seed the demonstration workspace on first boot. seedDemo() is idempotent
+  // (it checks for the demo organisation first), so calling it on every cold
+  // start is a single indexed lookup when data already exists. Batched
+  // inserts (insertMany) keep the one-time seed within serverless limits.
+  // Set DEMO_ENABLED=false to disable entirely.
+  if (process.env.DEMO_ENABLED !== 'false') {
     await seedDemo(db);
   }
   // Env-driven admin bootstrap (idempotent upsert). The password comes from
