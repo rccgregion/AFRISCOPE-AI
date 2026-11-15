@@ -6,6 +6,18 @@
     "api/[...path].ts": {
       "maxDuration": 60,
       "includeFiles": "supabase/migrations/**,public/demo/**"
+    },
+    "api/auth/auto.ts": {
+      "maxDuration": 60,
+      "includeFiles": "supabase/migrations/**,public/demo/**"
+    },
+    "api/auth/demo.ts": {
+      "maxDuration": 60,
+      "includeFiles": "supabase/migrations/**,public/demo/**"
+    },
+    "api/realtime/stream.ts": {
+      "maxDuration": 60,
+      "includeFiles": "supabase/migrations/**,public/demo/**"
     }
   },
   "rewrites": [
