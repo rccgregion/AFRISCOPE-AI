@@ -2,7 +2,7 @@
 
 **Evidence before action.** A functional, synthetic decision-support workspace for African development systems: medicine availability, public finance flows, and constrained intervention prioritisation.
 
-> All demonstration countries, facilities, financial records, and intervention assumptions are fictional. No real government, patient, partner, or Gates Foundation data is represented. The app supports human decisions; it never transfers stock or money.
+> Facility names are real Nigerian public hospitals (Federal Ministry of Health teaching-hospital network); all stock, consumption, delivery, financial records, and intervention assumptions are synthetic demonstration data, not real facility records. No endorsement, partnership, or coverage claim is made for any named facility or funder, and no real government, patient, or Gates Foundation data is represented. The app supports human decisions; it never transfers stock or money.
 
 ## What works
 

@@ -9,21 +9,22 @@
   ],
   "synthetic": true,
   "counts": {
-    "facilities.csv": 12,
-    "medicine_products.csv": 4,
-    "inventory.csv": 2496,
-    "deliveries.csv": 48,
-    "consumption.csv": 2496,
-    "budgets.csv": 4,
-    "funding_releases.csv": 8,
-    "procurement_events.csv": 4,
-    "expenditure_records.csv": 13,
-    "intervention_options.csv": 8,
     "budget_scenarios.csv": 3,
-    "inventory_defects.csv": 8
+    "budgets.csv": 4,
+    "consumption.csv": 2496,
+    "deliveries.csv": 48,
+    "expenditure_records.csv": 13,
+    "facilities.csv": 12,
+    "funding_releases.csv": 8,
+    "intervention_options.csv": 8,
+    "inventory.csv": 2496,
+    "inventory_defects.csv": 8,
+    "medicine_products.csv": 4,
+    "procurement_events.csv": 4
   },
   "limitations": [
-    "Fictional countries, facilities, programmes and assumptions.",
+    "Facility names are real Nigerian public hospitals; all stock, consumption, delivery and financial figures are synthetic demonstration data, not real facility records.",
+    "No endorsement, partnership or coverage claim is made for any named facility or funder.",
     "Weekly consumption is censored during stockouts; it is not uncensored demand.",
     "No exchange rates, clinical effect estimates, or real personal data."
   ]

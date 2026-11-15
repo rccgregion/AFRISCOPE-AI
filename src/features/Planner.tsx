@@ -327,7 +327,7 @@ export function Planner() {
               name: 'geography',
               label: 'Geography',
               type: 'select',
-              options: ['Northern Zone', 'Central Zone'],
+              options: ['North Central', 'South West', 'South East', 'South South', 'North West'],
             },
             {
               name: 'cost_cents',
@@ -514,7 +514,7 @@ function ScenarioForm({ onClose }: { onClose: () => void }) {
         </div>
         <fieldset className="checkbox-field">
           <legend>Required geographic coverage</legend>
-          {['Northern Zone', 'Central Zone'].map((g) => (
+          {['North Central', 'South West', 'South East', 'South South', 'North West'].map((g) => (
             <label key={g}>
               <input type="checkbox" name="geography" value={g} defaultChecked />
               {g}
