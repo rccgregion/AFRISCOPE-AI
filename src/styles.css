@@ -975,6 +975,37 @@ summary {
   gap: 10px;
 }
 
+/* Connection failure banner: always visible when auth/workspace fails. */
+.server-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid #e8b4a8;
+  background: linear-gradient(180deg, #fdf1ee 0%, #fbe6e0 100%);
+  color: #8a3324;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow:
+    var(--neu-inset),
+    0 1px 2px rgb(138 51 36 / 0.08);
+}
+
+.server-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.server-banner-hint {
+  color: #a05a4a;
+}
+
+.server-banner button {
+  flex-shrink: 0;
+}
+
 .banner-flask {
   color: #34d399;
   flex-shrink: 0;

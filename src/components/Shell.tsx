@@ -68,6 +68,38 @@ export function Logo({ light = false }: { light?: boolean }) {
     </Link>
   );
 }
+/**
+ * Visible connection banner. Silent failure is not acceptable: whenever auth
+ * or workspace loading fails, the user sees the reason and a Retry button.
+ */
+function ServerBanner() {
+  const { error, loading, refresh } = useStore();
+  const [retrying, setRetrying] = useState(false);
+  if (!error) return null;
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await refresh();
+    } finally {
+      setRetrying(false);
+    }
+  };
+  return (
+    <div className="server-banner" role="alert">
+      <TriangleAlert size={17} className="shrink-0" />
+      <div className="server-banner-text">
+        <strong>Can&apos;t reach the server.</strong> {error}
+        <span className="server-banner-hint">
+          {' '}
+          Your saved records have not been changed. Check your connection and retry.
+        </span>
+      </div>
+      <Button variant="secondary" onClick={() => void retry()} disabled={retrying || loading}>
+        {retrying || loading ? 'Retrying…' : 'Retry'}
+      </Button>
+    </div>
+  );
+}
 export function Shell({ children }: { children: ReactNode }) {
   const { workspace, project, data, role, selectProject, logout, realtimeConnected, liveEvents, switchPersona } = useStore();
   const [collapsed, setCollapsed] = useState(false),
@@ -311,6 +343,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <ChevronRight size={12} />
             <span>{current.label}</span>
           </div>
+          <ServerBanner />
           {children}
           <footer className="app-footer">
             <span>
