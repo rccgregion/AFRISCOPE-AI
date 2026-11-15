@@ -92,6 +92,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [toast]);
   const ensureAuth = useCallback(async () => {
+    // Prefer GET auto-auth (GET routes are reliable on serverless; POST
+    // bodies can be flaky through the Vercel function proxy). Fall back to
+    // POST, then to demo persona.
+    const tryGet = async () => {
+      const res = await api<{ ok: boolean; token?: string }>('/auth/auto', { method: 'GET' });
+      if (res?.token) {
+        sessionStorage.setItem('afriscope_token', res.token);
+        return res.token;
+      }
+      return null;
+    };
+    try {
+      const t = await tryGet();
+      if (t) return t;
+    } catch {
+      // fall through to POST
+    }
     try {
       const res = await api<{ ok: boolean; token?: string }>('/auth/auto', {
         method: 'POST',
