@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import multer from 'multer';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
-import { randomBytes, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
+import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { z } from 'zod';
 import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain.js';
 import { transition, optimise, type Constraints } from '../shared/analytics.js';
@@ -53,7 +53,6 @@ type Authed = Request & {
   sessionHash: string;
 };
 
-const hash = (s: string) => createHash('sha256').update(s).digest('hex');
 const cookieName = 'afriscope_session';
 const safeUser = 'id,email,username,full_name,is_platform_admin,preferences';
 const asyncRoute =
@@ -65,6 +64,48 @@ export function createApp(db: Database) {
   const app = express();
   app.set('trust proxy', true);
   app.disable('x-powered-by');
+  // Session secret: required, no default. Token hashes are HMAC-SHA256 with
+  // this secret, so rotating it invalidates every existing session. The app
+  // refuses to start without it.
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) {
+    throw new Error(
+      'SESSION_SECRET environment variable is required. Generate one with: openssl rand -hex 32',
+    );
+  }
+  const hash = (s: string) => createHmac('sha256', sessionSecret).update(s).digest('hex');
+  // Demo auth (/auth/auto, /auth/demo) is gated behind DEMO_MODE=true.
+  // DEMO_MODE takes precedence when set; otherwise the legacy DEMO_ENABLED
+  // flag applies (demo stays on unless explicitly disabled, so existing
+  // deployments keep working).
+  const demoModeEnabled = () => {
+    if (process.env.DEMO_MODE !== undefined) return process.env.DEMO_MODE === 'true';
+    return process.env.DEMO_ENABLED !== 'false';
+  };
+  // Basic per-IP rate limiting for unauthenticated auth endpoints
+  // (~10 attempts/min). In-memory per app instance; on serverless each
+  // instance enforces its own budget, which is sufficient abuse friction
+  // for demo/auto auth.
+  const authAttempts = new Map<string, number[]>();
+  const authRateLimit = (req: Request, res: Response, next: NextFunction) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip =
+      req.ip ||
+      (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
+      'unknown';
+    const now = Date.now();
+    const windowMs = 60_000;
+    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < windowMs);
+    if (recent.length >= 10) {
+      res
+        .status(429)
+        .json({ error: 'Too many authentication attempts. Try again in a minute.' });
+      return;
+    }
+    recent.push(now);
+    authAttempts.set(ip, recent);
+    next();
+  };
   // Vercel rewrite compatibility: the /api/(.*) rewrite targets the single
   // api/index function. When the original path is carried as ?__path=...,
   // remove that internal parameter so handlers only see real query
@@ -184,9 +225,10 @@ export function createApp(db: Database) {
     path: string,
     fn: (req: Request, res: Response) => Promise<unknown>,
     protect = true,
+    extra?: (req: Request, res: Response, next: NextFunction) => void,
   ) => {
-    if (protect) app[method]('/api' + path, auth, asyncRoute(fn));
-    else app[method]('/api' + path, asyncRoute(fn));
+    const middlewares = [...(protect ? [auth] : []), ...(extra ? [extra] : [])];
+    app[method]('/api' + path, ...middlewares, asyncRoute(fn));
   };
   // The preceding helper deliberately keeps authentication ahead of every protected handler.
   app.use('/api', (_req, res, next) => {
@@ -226,12 +268,13 @@ export function createApp(db: Database) {
     'post',
     '/auth/demo',
     async (req, res) => {
-      if (process.env.DEMO_ENABLED === 'false') throw httpError(403, 'Demo access is disabled');
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const role = demoRole(req.body);
       const token = await session(req, res, demoUserId(role));
       res.json({ ok: true, role, token });
     },
     false,
+    authRateLimit,
   );
   // GET fallback for clients that cannot send a POST body (e.g. EventSource
   // style flows). POST remains the primary demo-auth path.
@@ -239,17 +282,19 @@ export function createApp(db: Database) {
     'get',
     '/auth/demo',
     async (req, res) => {
-      if (process.env.DEMO_ENABLED === 'false') throw httpError(403, 'Demo access is disabled');
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const role = demoRole(req.query);
       const token = await session(req, res, demoUserId(role));
       res.json({ ok: true, role, token });
     },
     false,
+    authRateLimit,
   );
   route(
     'post',
     '/auth/auto',
     async (req, res) => {
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const user = await db.admin(async (c) => {
         const u = (
           await c.query(
@@ -263,11 +308,13 @@ export function createApp(db: Database) {
       res.json({ ok: true, token, user });
     },
     false,
+    authRateLimit,
   );
   route(
     'get',
     '/auth/auto',
     async (req, res) => {
+      if (!demoModeEnabled()) throw httpError(403, 'Demo access is disabled');
       const user = await db.admin(async (c) => {
         const u = (
           await c.query(
@@ -281,6 +328,7 @@ export function createApp(db: Database) {
       res.json({ ok: true, token, user });
     },
     false,
+    authRateLimit,
   );
   route(
     'post',

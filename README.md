@@ -88,7 +88,7 @@ See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL dat
 
 ## Configuration
 
-See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
+See `.env.example`. Important variables: `DATABASE_PATH` or `DATABASE_URL`, `PORT`, `HOST`, `APP_ORIGIN`, `DEMO_ENABLED`, `DEMO_MODE`, `SESSION_SECRET` (required — the app refuses to start without it; generate with `openssl rand -hex 32`), `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `LLM_EXTERNAL_ENABLED`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`. Secrets stay server-side. External AI requires explicit enablement plus a key and HTTPS; the default local assistant never pretends to be a live model.
 
 ## Documentation
 

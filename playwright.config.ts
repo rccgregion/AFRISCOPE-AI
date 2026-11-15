@@ -28,6 +28,7 @@ export default defineConfig({
       HOST: '0.0.0.0',
       DATABASE_PATH: '.data/e2e',
       DEMO_ENABLED: 'true',
+      SESSION_SECRET: 'e2e-only-session-secret-not-for-production-0123456789abcdef',
       LLM_EXTERNAL_ENABLED: 'false',
       NODE_ENV: 'production',
       APP_ORIGIN: 'http://127.0.0.1:3100',
