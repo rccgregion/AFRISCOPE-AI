@@ -3,27 +3,13 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "functions": {
-    "api/[...path].ts": {
-      "maxDuration": 60,
-      "includeFiles": "supabase/migrations/**,public/demo/**"
-    },
-    "api/auth/auto.ts": {
-      "maxDuration": 60,
-      "includeFiles": "supabase/migrations/**,public/demo/**"
-    },
-    "api/auth/demo.ts": {
-      "maxDuration": 60,
-      "includeFiles": "supabase/migrations/**,public/demo/**"
-    },
-    "api/realtime/stream.ts": {
+    "api/index.ts": {
       "maxDuration": 60,
       "includeFiles": "supabase/migrations/**,public/demo/**"
     }
   },
   "rewrites": [
-    {
-      "source": "/((?!api/|assets/|demo/|favicon.svg).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/|assets/|demo/|favicon.svg).*)", "destination": "/index.html" }
   ]
 }
