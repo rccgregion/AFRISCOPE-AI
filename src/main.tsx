@@ -36,20 +36,24 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
   }
 }
 function Workspace() {
-  const { workspace, loading, error, data, role } = useStore();
+  const { workspace, loading, error, data, role, refresh } = useStore();
   const location = useLocation();
-  if (loading) return <Loading />;
+  if (loading && !workspace) return <Loading />;
+  // No sign-in gate: the dashboard shell always renders. If the workspace
+  // has not loaded yet (e.g. cold-start retry), show a retryable notice
+  // inside the shell instead of a blocking error screen.
   if (error && !workspace) {
     return (
-      <div className="fatal-error">
-        <AlertCircle size={35} />
-        <h1>Workspace connection</h1>
-        <p>{error}</p>
-        <Button onClick={() => window.location.reload()}>Retry connection</Button>
-      </div>
+      <Shell>
+        <Notice tone="warning">
+          {error} The workspace is retrying automatically — or retry now.
+        </Notice>
+        <div style={{ marginTop: 16 }}>
+          <Button onClick={() => void refresh()}>Retry connection</Button>
+        </div>
+      </Shell>
     );
   }
-  if (!workspace) return <Loading />;
   if (error) return <Notice tone="warning">{error}</Notice>;
   const restricted =
     location.pathname === '/administration' &&

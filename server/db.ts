@@ -108,10 +108,16 @@ export async function createDatabase(
       const c = await pool.connect();
       const client: Client = {
         query: async (sql, p = []) => {
-          const result = await c.query(sql, p);
+          // Pass no params argument when empty so pg uses the simple query
+          // protocol. The extended protocol (triggered by an explicit params
+          // array) rejects multi-statement batches, which migrations rely on.
+          const result = p.length ? await c.query(sql, p) : await c.query(sql);
           // Multi-statement simple queries return an array of results; the
-          // last one carries the rows we need.
-          const single = Array.isArray(result) ? result[result.length - 1] : result;
+          // last one carries the rows we need. An empty array (no result)
+          // normalises to an empty rows list.
+          const single = Array.isArray(result)
+            ? (result[result.length - 1] ?? { rows: [] })
+            : result;
           return normalize(single as QueryResult);
         },
       };
@@ -213,11 +219,12 @@ export async function createDatabase(
         'create table if not exists schema_migrations(version text primary key,applied_at timestamptz not null default now())',
       );
       const applied = await c.query('select version from schema_migrations');
+      const appliedVersions = new Set((applied.rows ?? []).map((r) => r.version));
       const migrationsPath = migrationsDir();
       for (const f of readdirSync(migrationsPath)
         .filter((f) => f.endsWith('.sql'))
         .sort()) {
-        if (applied.rows.some((r) => r.version === f)) continue;
+        if (appliedVersions.has(f)) continue;
         // Batch each file into a single multi-statement query. Running hundreds
         // of statements one-by-one exceeds serverless time limits against
         // networked PostgreSQL (e.g. Supabase from Vercel).
