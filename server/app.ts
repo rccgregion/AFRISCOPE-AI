@@ -74,6 +74,62 @@ export function createApp(db: Database) {
     );
   }
   const hash = (s: string) => createHmac('sha256', sessionSecret).update(s).digest('hex');
+  // Short-lived, single-purpose ticket for EventSource. The browser's
+  // EventSource API cannot send an Authorization header, so the stream must
+  // accept credentials in the query string. To limit exposure (query strings
+  // end up in proxy logs), the client exchanges its session for a ticket that
+  // expires in 5 minutes and is scoped to realtime only.
+  const ticketTtlMs = 5 * 60_000;
+  const issueTicket = (userId: string) => {
+    const payload = Buffer.from(
+      JSON.stringify({ sub: userId, exp: Date.now() + ticketTtlMs, scope: 'realtime' }),
+    ).toString('base64url');
+    const sig = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    return `${payload}.${sig}`;
+  };
+  const verifyTicket = (ticket: string): string | null => {
+    const [payload, sig] = ticket.split('.');
+    if (!payload || !sig) return null;
+    const expected = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+    try {
+      const data = JSON.parse(Buffer.from(payload, 'base64url').toString()) as {
+        sub?: string;
+        exp?: number;
+        scope?: string;
+      };
+      if (data.scope !== 'realtime' || !data.sub) return null;
+      if (!data.exp || data.exp < Date.now()) return null;
+      return String(data.sub);
+    } catch {
+      return null;
+    }
+  };
+  // Resolve the caller of an SSE request: ticket first, then session token
+  // (query, for compatibility), then the session cookie.
+  const streamIdentity = async (req: Request): Promise<string | null> => {
+    const ticket = typeof req.query.ticket === 'string' ? req.query.ticket : null;
+    if (ticket) {
+      const sub = verifyTicket(ticket);
+      if (sub) return sub;
+    }
+    const raw =
+      (typeof req.query.token === 'string' ? req.query.token : null) ||
+      req.cookies?.[cookieName] ||
+      null;
+    if (typeof raw !== 'string' || !raw || raw.length > 100) return null;
+    const record = (
+      await db.admin((c) =>
+        c.query(
+          'select user_id from auth_sessions where token_hash=$1 and expires_at>now()',
+          [hash(raw)],
+        ),
+      )
+    ).rows[0];
+    return record ? String(record.user_id) : null;
+  };
   // Demo auth (/auth/auto, /auth/demo) is gated behind DEMO_MODE=true.
   // DEMO_MODE takes precedence when set; otherwise the legacy DEMO_ENABLED
   // flag applies (demo stays on unless explicitly disabled, so existing
@@ -1693,8 +1749,31 @@ export function createApp(db: Database) {
     );
   });
 
-  // Real-time Event Stream (Server-Sent Events)
-  app.get('/api/realtime/stream', (req, res) => {
+  // Exchange a session for a short-lived realtime ticket. EventSource cannot
+  // send an Authorization header, so the client opens the stream with
+  // ?ticket=<short-lived>. Session tokens still work for compatibility.
+  route(
+    'post',
+    '/realtime/ticket',
+    async (req, res) => {
+      res.json({ ticket: issueTicket((req as Authed).user.id), expires_in: ticketTtlMs / 1000 });
+    },
+    true,
+  );
+
+  // Real-time Event Stream (Server-Sent Events). The stream is an
+  // enhancement only: workspace loading and auth never depend on it.
+  app.get('/api/realtime/stream', async (req, res) => {
+    let userId: string | null = null;
+    try {
+      userId = await streamIdentity(req);
+    } catch {
+      userId = null;
+    }
+    if (!userId) {
+      res.status(401).json({ error: 'Sign in to access the live event stream' });
+      return;
+    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
@@ -1702,9 +1781,7 @@ export function createApp(db: Database) {
     res.flushHeaders?.();
 
     const clientId = randomBytes(16).toString('hex');
-    const _token = (req.query.token as string) || (req as Authed).cookies?.[cookieName];
-    const userId = 'user-' + clientId.slice(0, 8);
-    const orgId = req.query.orgId as string | undefined;
+    const orgId = typeof req.query.orgId === 'string' ? req.query.orgId : undefined;
 
     realtime.addClient(clientId, userId, orgId, res);
 

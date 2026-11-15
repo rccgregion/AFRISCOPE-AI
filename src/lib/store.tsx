@@ -131,17 +131,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // Live updates are an enhancement only: workspace loading and auth never
+  // depend on the stream. Serverless functions cannot hold a long-lived
+  // connection, so the client reconnects with exponential backoff and falls
+  // back to polling /api/workspace every 15s after 3 consecutive failures.
   useEffect(() => {
     let es: EventSource | null = null;
     let retryTimeout: NodeJS.Timeout | null = null;
+    let pollTimeout: NodeJS.Timeout | null = null;
+    let failures = 0;
+    let closed = false;
 
-    const connectSse = () => {
+    const schedulePoll = () => {
+      if (closed) return;
+      setRealtimeConnected(false);
+      const tick = async () => {
+        if (closed) return;
+        try {
+          const w = await api<Workspace>('/workspace');
+          setWorkspace(w);
+        } catch {
+          // keep polling; refresh() surfaces hard failures in the banner
+        }
+        pollTimeout = setTimeout(tick, 15000);
+      };
+      pollTimeout = setTimeout(tick, 15000);
+    };
+
+    const connectSse = async () => {
+      if (closed) return;
+      if (failures >= 3) {
+        schedulePoll();
+        return;
+      }
       try {
-        const token = getToken() || '';
-        const url = `/api/realtime/stream?token=${encodeURIComponent(token)}`;
+        // EventSource cannot send an Authorization header, so exchange the
+        // session for a short-lived (5 min) realtime ticket. If the exchange
+        // fails, fall back to the session token in the query string.
+        let ticket = '';
+        try {
+          const res = await api<{ ticket?: string }>('/realtime/ticket', {
+            method: 'POST',
+            body: {},
+          });
+          ticket = res?.ticket || '';
+        } catch {
+          ticket = '';
+        }
+        const credential = ticket || getToken() || '';
+        const url = `/api/realtime/stream?${ticket ? 'ticket' : 'token'}=${encodeURIComponent(credential)}`;
         es = new EventSource(url);
 
         es.onopen = () => {
+          failures = 0;
           setRealtimeConnected(true);
         };
 
@@ -172,18 +214,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         es.onerror = () => {
           setRealtimeConnected(false);
           es?.close();
-          retryTimeout = setTimeout(connectSse, 5000);
+          failures += 1;
+          // 2s, 4s, 8s … capped at 30s; after 3 failures switch to polling.
+          const delay = Math.min(2000 * 2 ** (failures - 1), 30000);
+          retryTimeout = setTimeout(() => void connectSse(), delay);
         };
       } catch {
         setRealtimeConnected(false);
+        failures += 1;
+        retryTimeout = setTimeout(() => void connectSse(), 5000);
       }
     };
 
-    connectSse();
+    void connectSse();
 
     return () => {
+      closed = true;
       es?.close();
       if (retryTimeout) clearTimeout(retryTimeout);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [notify, refresh]);
 
