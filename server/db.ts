@@ -99,7 +99,15 @@ export async function createDatabase(
     });
     tx = async (fn) => {
       const c = await pool.connect();
-      const client: Client = { query: async (sql, p = []) => normalize(await c.query(sql, p)) };
+      const client: Client = {
+        query: async (sql, p = []) => {
+          const result = await c.query(sql, p);
+          // Multi-statement simple queries return an array of results; the
+          // last one carries the rows we need.
+          const single = Array.isArray(result) ? result[result.length - 1] : result;
+          return normalize(single as QueryResult);
+        },
+      };
       try {
         await c.query('begin');
         const r = await fn(client);

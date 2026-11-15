@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed pg multi-statement result handling (unwrap result arrays) so batched migrations complete against networked PostgreSQL.
+- Added `docs/DESIGN.md` design system (glassmorphism/neumorphism/claymorphism/skeuomorphism blend) and installed `agent-browser` + `find-skills` agent skills under `.claude/skills/`.
+
 - Fixed Vercel `500 FUNCTION_INVOCATION_FAILED` (`ERR_MODULE_NOT_FOUND`) by adding `.js` extensions to relative imports in `server/`, `api/`, and `shared/` so Node ESM can resolve them at runtime.
 
 - Batched migration statements (one query per file) so first-boot against networked PostgreSQL completes within serverless time limits; added a 5s timeout to the Supabase health check so `/api/health` can never hang.
