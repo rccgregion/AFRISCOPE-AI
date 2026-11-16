@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react
 import { StoreProvider, useStore } from './lib/store';
 import { Shell } from './components/Shell';
 import { Button, Loading, Empty } from './components/ui';
+import { RestrictedAdministration } from './components/Restricted';
 import { Dashboard } from './features/Dashboard';
 import { Operations } from './features/Operations';
 import { DataIntelligence } from './features/DataIntelligence';
@@ -59,19 +60,18 @@ function Workspace() {
   const restricted =
     location.pathname === '/administration' &&
     !['organisation_admin', 'platform_admin'].includes(role);
+  // A blocked page shows the reason *instead of* the page. Rendering both left the
+  // notice stacked above live administrator content (Part 3.1).
+  if (restricted) {
+    return (
+      <Shell>
+        <RestrictedAdministration role={role} />
+      </Shell>
+    );
+  }
   return (
     <Shell>
-      {restricted ? (
-        <Empty
-          title="Administrator access required"
-          description="Your current role cannot manage organisation membership or invitations. Project evidence remains available in the other modules."
-          action={
-            <Link to="/" className="btn btn-secondary">
-              Return to overview
-            </Link>
-          }
-        />
-      ) : !data && location.pathname !== '/projects' ? (
+      {!data && location.pathname !== '/projects' ? (
         <Empty
           title="Create a project to get started"
           description="This workspace has no accessible project yet."

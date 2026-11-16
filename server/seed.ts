@@ -191,8 +191,8 @@ export async function seedDemo(db: Database, reset = false, sampleOnlyDeletes = 
             id: demoUserId(role),
           email: `demo.${role}@afriscope.example`,
           full_name: {
-            platform_admin: 'Alex · Platform reviewer',
-            organisation_admin: 'Amina · Organisation admin',
+            platform_admin: 'Alex · Platform administrator',
+            organisation_admin: 'Amara · Organisation admin',
             programme_manager: 'Amina · Programme manager',
             data_analyst: 'Daniel · Data analyst',
             operator: 'Grace · Facility operator',
@@ -867,7 +867,7 @@ async function seedLearning(c: Client) {
       title: first ? 'From data quality to trustworthy decisions' : pathways[i],
       description: first
         ? 'A complete worked lesson: inspect evidence, challenge assumptions, and communicate uncertainty.'
-        : `Practical foundations for ${pathways[i].toLowerCase()}. Apply the principles to your project.`,
+        : `Practical foundations for ${pathways[i]}. Apply the principles to your project.`,
       duration_minutes: first ? 20 : 15,
       position: i + 1,
       content: {
@@ -878,7 +878,7 @@ async function seedLearning(c: Client) {
               'Communicate a limitation without overstating confidence.',
             ]
           : [
-              `Identify where ${pathways[i].toLowerCase()} applies.`,
+              `Identify where ${pathways[i]} applies.`,
               'Recognise when simpler methods are sufficient.',
               'Document a human review checkpoint.',
             ],

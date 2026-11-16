@@ -39,7 +39,7 @@ import {
 import { explain } from './assistant.js';
 import { realtime } from './realtime.js';
 import { backupService } from './backup.js';
-import { importSamplePack, SAMPLE_LABEL, SIMULATED_ALERT_PREFIX } from './sample-pack.js';
+import { importSamplePack } from './sample-pack.js';
 import {
   dryRunClear,
   clearSampleData,
@@ -58,7 +58,13 @@ import {
 } from './real-import.js';
 import { SAVED_PROMPTS, BEHAVIOUR_RULES, PROMPT_SCOPE_LABEL } from './prompts.js';
 import { runPrompt } from './prompt-runner.js';
-import { listConnectors, createConnector, syncConnector } from './connectors.js';
+import {
+  listConnectors,
+  createConnector,
+  configureConnector,
+  syncConnector,
+} from './connectors.js';
+import { originSummary, dataStateLabel } from './origin.js';
 import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis.js';
 
 type Authed = Request & {
@@ -401,9 +407,13 @@ export function createApp(db: Database) {
         });
         return;
       }
+      const database = db.info();
       res.json({
         status: 'ok',
-        database: 'PostgreSQL / PGlite or configured PostgreSQL',
+        // Name the database actually in use rather than a generic label (Part
+        // 5.5). No host credentials, no connection string.
+        database: database.label,
+        database_info: database,
         supabase: await supabaseStatus(),
         llm:
           process.env.LLM_EXTERNAL_ENABLED === 'true' && !!process.env.LLM_API_KEY
@@ -652,6 +662,18 @@ export function createApp(db: Database) {
             [id],
           )
         ).rows;
+      // Shared origin counters, so every module reads the same numbers and the
+      // top bar can describe the data truthfully ("Demo data" / "Real data loaded").
+      const origin = await originSummary(c, id);
+      output.origin_summary = origin;
+      output.data_state = dataStateLabel(origin);
+      // Operational reference date ("data as of"), configurable per project in
+      // Administration -> rule configuration (settings.as_of).
+      output.reference_date = String(
+        ((output.project as Record<string, unknown> | undefined)?.settings as
+          | Record<string, unknown>
+          | undefined)?.as_of || AS_OF,
+      ).slice(0, 10);
       output.my_role = (await one(c, 'select project_role($1) as role', [id])).role;
       output.members = (
         await c.query(
@@ -1945,19 +1967,31 @@ export function createApp(db: Database) {
       message = `Proposal: ${String(record.title || 'Prioritisation review')}`;
     }
 
+    // DEMO ONLY. This endpoint never writes rows: it re-broadcasts a payload the
+    // caller supplied, and every event is labelled so it cannot be mistaken for
+    // a database change. Real ingest goes through the validated import flow.
     realtime.broadcast({
       id: `wh-${Date.now()}-${randomBytes(4).toString('hex')}`,
       type: `supabase:${table}:${type.toLowerCase()}`,
       timestamp: new Date().toISOString(),
       orgId: record.organisation_id ? String(record.organisation_id) : undefined,
       projectId: record.project_id ? String(record.project_id) : undefined,
-      title,
-      message,
+      title: `Demo only · ${title}`,
+      message: `${message} (demonstration event; nothing was written to the database)`,
       severity,
-      data: { table, type, record },
+      data: { table, type, record, demo: true, rows_written: 0, data_origin: 'demo' },
     });
 
-    res.json({ ok: true, received: true, action: 'broadcast', table, type });
+    res.json({
+      ok: true,
+      received: true,
+      action: 'broadcast',
+      table,
+      type,
+      demo: true,
+      rows_written: 0,
+      note: 'Demonstration event only. Nothing was written to project data.',
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -2012,27 +2046,7 @@ export function createApp(db: Database) {
     await permission(req, 'read', id);
     res.json(
       await scoped(req, async (c) => {
-        const one_ = async (table: string) => {
-          const row = (
-            await c.query(
-              `select count(*) filter (where data_origin='sample')::int as sample,
-                      count(*) filter (where data_origin='real')::int as real
-                 from ${table} where project_id=$1`,
-              [id],
-            )
-          ).rows[0] as { sample: number; real: number };
-          return { sample: Number(row.sample), real: Number(row.real) };
-        };
-        const tables = [
-          'facilities',
-          'inventory_records',
-          'consumption_records',
-          'operational_alerts',
-          'recommendations',
-          'funding_releases',
-        ];
-        const counts: Record<string, { sample: number; real: number }> = {};
-        for (const t of tables) counts[t] = await one_(t);
+        const summary = await originSummary(c, id);
         const alerts = (
           await c.query(
             `select id, title, severity, data_origin from operational_alerts
@@ -2042,15 +2056,16 @@ export function createApp(db: Database) {
         ).rows.map((r) => ({
           ...r,
           simulated: String(r.data_origin) === 'sample',
-          label: String(r.data_origin) === 'sample' ? SAMPLE_LABEL : null,
-          title_prefix: String(r.data_origin) === 'sample' ? SIMULATED_ALERT_PREFIX : null,
+          label: String(r.data_origin) === 'sample' ? summary.sample_label : null,
+          title_prefix: String(r.data_origin) === 'sample' ? summary.simulated_prefix : null,
         }));
         return {
           project_id: id,
-          counts,
-          mixed: tables.some((t) => counts[t].sample > 0 && counts[t].real > 0),
-          sample_label: SAMPLE_LABEL,
-          simulated_prefix: SIMULATED_ALERT_PREFIX,
+          counts: summary,
+          data_state: dataStateLabel(summary),
+          mixed: summary.has_sample && summary.has_real,
+          sample_label: summary.sample_label,
+          simulated_prefix: summary.simulated_prefix,
           alerts,
         };
       }),
@@ -2465,8 +2480,16 @@ export function createApp(db: Database) {
 
   // Automated recurring backups endpoints
   route('get', '/backups', async (_req, res) => {
-    const list = await backupService.listBackups(db);
-    res.json({ backups: list, recurring_interval_hours: 6 });
+    const [list, scheduler] = await Promise.all([
+      backupService.listBackups(db),
+      backupService.status(db),
+    ]);
+    res.json({
+      backups: list,
+      scheduler,
+      // Legacy field kept for older clients; it now reflects real state.
+      recurring_interval_hours: scheduler.configured ? scheduler.interval_hours : null,
+    });
   });
 
   route('post', '/backups', async (req, res) => {
@@ -2475,19 +2498,19 @@ export function createApp(db: Database) {
     res.status(201).json(backup);
   });
 
-  app.get('/api/backups/:filename/download', auth, (req, res, next) => {
-    try {
+  app.get(
+    '/api/backups/:filename/download',
+    auth,
+    asyncRoute(async (req, res) => {
       const param = req.params.filename;
       const filename = Array.isArray(param) ? param[0] : param;
       if (!filename) throw httpError(400, 'Filename required');
-      const buf = backupService.getBackupFile(filename);
+      const buf = await backupService.getBackupFile(db, filename);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(buf);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
   // Live Data Connectors
   route('get', '/projects/:id/connectors', async (req, res) => {
@@ -2516,6 +2539,31 @@ export function createApp(db: Database) {
     const connectorId = uuid.parse(req.params.connectorId);
     await permission(req, 'manage', id);
     const result = await syncConnector(db, connectorId, id);
+    // 409 for "nothing to do", 502 for "the endpoint failed". Never 200: a
+    // successful-looking status must mean a real request really succeeded.
+    const status = result.status === 'ok' ? 200 : result.status === 'error' ? 502 : 409;
+    res.status(status).json(result);
+  });
+
+  route('patch', '/projects/:id/connectors/:connectorId', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    const connectorId = uuid.parse(req.params.connectorId);
+    await permission(req, 'manage', id);
+    const input = z
+      .object({
+        endpoint_url: z.string().max(500).nullable().default(null),
+        auth_header: z.string().max(300).nullable().default(null),
+        target_entity: z.string().max(120).nullable().default(null),
+      })
+      .parse(req.body || {});
+    const result = await configureConnector(
+      db,
+      id,
+      connectorId,
+      Object.fromEntries(
+        Object.entries(input).filter(([, v]) => v !== null && v !== ''),
+      ) as Record<string, string>,
+    );
     res.json(result);
   });
 

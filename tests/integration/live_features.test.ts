@@ -96,25 +96,29 @@ describe('Live Data, Automated Backups, Supabase Webhooks, and GIS layers', () =
     expect(webhookRes.body.type).toBe('INSERT');
   });
 
-  it('handles live data connectors: lists connectors and triggers live sync', async () => {
+  // Rewritten with the connector integrity fix: the old assertions required
+  // invented results (status 'active', synced_records > 0, facility_count > 0)
+  // from a connector that had never made a request. The contract is now that an
+  // unconfigured connector refuses to sync and reports nothing.
+  it('lists connectors as unconfigured and refuses to fabricate a sync', async () => {
     const agent = agents.programme_manager;
 
-    // List connectors
     const listRes = await agent.get(path(`/projects/${med}/connectors`)).expect(200);
     expect(listRes.body.connectors.length).toBeGreaterThanOrEqual(3);
 
     const dhis2 = listRes.body.connectors.find((c: { type: string }) => c.type === 'dhis2_api');
     expect(dhis2).toBeDefined();
+    expect(dhis2.connection_mode).toBe('not_configured');
+    expect(dhis2.rows_synced).toBeNull();
+    expect(dhis2.last_sync_at).toBeNull();
 
-    // Trigger sync
     const syncRes = await agent
       .post(path(`/projects/${med}/connectors/${dhis2.id}/sync`))
       .set('X-AfriScope-Request', '1')
-      .send({})
-      .expect(200);
-
-    expect(syncRes.body.connector.status).toBe('active');
-    expect(syncRes.body.result.synced_records).toBeGreaterThan(0);
-    expect(syncRes.body.result.facility_count).toBeGreaterThan(0);
+      .send({});
+    expect(syncRes.status).toBe(409);
+    expect(syncRes.body.status).toBe('not_configured');
+    expect(syncRes.body.rowsSynced).toBeNull();
+    expect(syncRes.body.result).toBeUndefined();
   });
 });

@@ -61,6 +61,21 @@ export function OriginFilter({
   );
 }
 
+/**
+ * Attach provenance to an export so a downloaded file can never lose the
+ * sample/real distinction. Every export in the app goes through this.
+ */
+export function exportLabelRows<T extends Record<string, unknown>>(rows: T[]) {
+  return rows.map((r) => {
+    const origin = (r.data_origin as string) ?? 'real';
+    return {
+      ...r,
+      data_origin: origin,
+      origin_label: origin === 'sample' ? SAMPLE_BADGE_TEXT : 'Real data',
+    };
+  });
+}
+
 export function matchesScope(origin: string | null | undefined, scope: OriginScope) {
   if (scope === 'all') return true;
   return (origin ?? 'real') === scope;

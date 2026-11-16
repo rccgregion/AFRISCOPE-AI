@@ -20,9 +20,11 @@ import {
   OriginFilter,
   MixedOriginWarning,
   NoDataYet,
+  exportLabelRows,
   matchesScope,
   type OriginScope,
 } from '../components/origin';
+import { EmptyState } from '../components/EmptyState';
 import { api, exportCSV } from '../lib/api';
 import {
   PageHeader,
@@ -44,7 +46,7 @@ import {
   EvidenceDetail,
   RecommendationDetail,
 } from '../components/workflow';
-import { dateLabel, money, number } from '../../shared/domain';
+import { dateLabel, deliveryLabel, money, number } from '../../shared/domain';
 export function Operations() {
   const { data, project, allow, notify } = useStore(),
     action = useAction();
@@ -64,15 +66,14 @@ export function Operations() {
     [risk, setRisk] = useState('All risks'),
     [currency, setCurrency] = useState('NGN'),
     [origin, setOrigin] = useState<OriginScope>('all');
-  const originCounts = {
-    sample: (data?.operational_alerts || []).filter((a) => a.data_origin === 'sample').length,
-    real: (data?.operational_alerts || []).filter((a) => a.data_origin !== 'sample').length,
-  };
+  // One server-side counter for every module (server/origin.ts). Chip counts are
+  // per entity, so they always equal the rows the page renders.
+  const summary = data?.origin_summary;
+  const stockCounts = summary?.inventory_latest ?? { sample: 0, real: 0 };
+  const alertCounts = summary?.operational_alerts ?? { sample: 0, real: 0 };
+  const fundingCounts = summary?.funding_releases ?? { sample: 0, real: 0 };
   const scopedAlerts = (data?.operational_alerts || []).filter((a) => matchesScope(a.data_origin, origin));
-  const fundingCounts = {
-    sample: (data?.funding_releases || []).filter((r) => r.data_origin === 'sample').length,
-    real: (data?.funding_releases || []).filter((r) => r.data_origin !== 'sample').length,
-  };
+  const scopedFunding = (data?.funding_releases || []).filter((r) => matchesScope(r.data_origin, origin));
   useEffect(() => {
     if (!project) return;
     let active = true;
@@ -131,7 +132,7 @@ export function Operations() {
         <Button
           variant="secondary"
           onClick={() =>
-            exportCSV('afriscope-operational-alerts.csv', data?.operational_alerts || [])
+            exportCSV('afriscope-operational-alerts.csv', exportLabelRows(data?.operational_alerts || []))
           }
         >
           <Download size={16} />
@@ -142,6 +143,17 @@ export function Operations() {
           Recalculate
         </Button>
       </PageHeader>
+      <p className="as-of-line">
+        <span>
+          Data as of <strong>{dateLabel(data?.reference_date) || 'not set'}</strong>
+        </span>
+        <span className="as-of-sep">·</span>
+        <span>{data?.data_state || 'Data state unknown'}</span>
+        <span className="as-of-sep">·</span>
+        <span>
+          Reference date is configurable in Administration → rule configuration
+        </span>
+      </p>
       <Tabs items={tabs} value={tab} onChange={(t) => setParams({ tab: t })} />
       {tab === 'Medicine supply' && (
         <>
@@ -149,7 +161,8 @@ export function Operations() {
             Data is a fixed synthetic snapshot, not a live facility feed. Coverage uses usable stock
             divided by average daily consumption over four complete weeks.
           </Notice>
-          <OriginFilter value={origin} onChange={setOrigin} counts={originCounts} />
+          <OriginFilter value={origin} onChange={setOrigin} counts={stockCounts} />
+          <MixedOriginWarning counts={stockCounts} />
           <div className="section-toolbar">
             <div className="inline-fields">
               <label>
@@ -173,7 +186,7 @@ export function Operations() {
             </div>
             <Button
               variant="secondary"
-              onClick={() => exportCSV('medicine-coverage.csv', filtered)}
+              onClick={() => exportCSV('medicine-coverage.csv', exportLabelRows(filtered))}
             >
               <Download size={15} />
               Export coverage
@@ -221,9 +234,19 @@ export function Operations() {
                   {
                     key: 'expected_delivery',
                     label: 'Next delivery',
-                    render: (r) => dateLabel(r.expected_delivery),
+                    render: (r) => deliveryLabel(r.expected_delivery, data?.reference_date),
                   },
                   { key: 'risk', label: 'Risk', render: (r) => <Status value={r.risk} /> },
+                  {
+                    key: 'data_origin',
+                    label: 'Origin',
+                    render: (r) =>
+                      r.data_origin === 'sample' ? (
+                        <OriginBadge origin="sample" />
+                      ) : (
+                        <Badge tone="green">Real</Badge>
+                      ),
+                  },
                   {
                     key: 'action',
                     label: '',
@@ -242,6 +265,41 @@ export function Operations() {
                   },
                 ]}
                 onRowClick={setSelected}
+                empty={
+                  (stock || []).length ? (
+                    <EmptyState
+                      variant="filtered"
+                      compact
+                      title="No stock records match the current filters"
+                      description={`This project has ${(stock || []).length} stock record(s). None matches ${[
+                        origin !== 'all' ? 'origin: ' + origin : '',
+                        country !== 'All countries' ? 'country: ' + country : '',
+                        risk !== 'All risks' ? 'risk: ' + risk : '',
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}. Nothing has been deleted.`}
+                      filterLabel="current filters"
+                      onClearFilter={() => {
+                        setOrigin('all');
+                        setCountry('All countries');
+                        setRisk('All risks');
+                      }}
+                    />
+                  ) : (
+                    <EmptyState
+                      compact
+                      title="No stock records yet"
+                      description="Recalculate once facility stock has been imported, or restore the labelled sample pack from Administration."
+                      action={
+                        allow('data') ? (
+                          <Button onClick={recalculate} busy={busy}>
+                            <RefreshCw size={15} /> Recalculate
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  )
+                }
               />
             </Panel>
             <div className="stack">
@@ -251,23 +309,24 @@ export function Operations() {
               >
                 <div className="transfer-list">
                   {(stock || [])
-                    .filter((r) => r.transfer_opportunity)
+                    .filter((r) => r.transfer_opportunity && matchesScope(r.data_origin, origin))
                     .map((r) => (
-                      <button key={r.id} onClick={() => setTransfer(r)}>
+                      <button key={r.id} className="transfer-card" onClick={() => setTransfer(r)}>
                         <span className="transfer-icon">
-                          <Truck size={21} />
+                          <Truck size={18} />
                         </span>
-                        <div>
+                        <span className="transfer-body">
                           <strong>
+                            {r.data_origin === 'sample' ? 'Simulated: ' : ''}
                             {number(r.transfer_opportunity.quantity)} {r.unit}
                           </strong>
-                          <p>
+                          <span className="transfer-route">
                             {r.transfer_opportunity.donor_name} <ArrowRight size={12} />{' '}
                             {r.facility_name}
-                          </p>
-                          <small>{r.product_name}</small>
-                        </div>
-                        <ArrowUpRight size={17} />
+                          </span>
+                          <span className="transfer-product">{r.product_name}</span>
+                          <OriginBadge origin={r.data_origin} />
+                        </span>
                       </button>
                     ))}
                   {stock && !stock.some((r) => r.transfer_opportunity) && (
@@ -338,11 +397,9 @@ export function Operations() {
               <div key={o}>
                 <span>{o === 'sample' ? 'Sample rows' : 'Real rows'}</span>
                 <strong>
-                  {(data?.funding_releases || []).filter((r) => (r.data_origin ?? 'real') === o)
-                    .length}{' '}
-                  releases ·{' '}
+                  {scopedFunding.filter((r) => (r.data_origin ?? 'real') === o).length} releases ·{' '}
                   {money(
-                    (data?.funding_releases || [])
+                    scopedFunding
                       .filter((r) => (r.data_origin ?? 'real') === o && r.currency === currency)
                       .reduce((sum, r) => sum + Number(r.amount_cents || 0), 0) / 100,
                     currency,
@@ -500,7 +557,7 @@ export function Operations() {
       )}
       {tab === 'Alerts' && (
         <>
-        <OriginFilter value={origin} onChange={setOrigin} counts={originCounts} />
+        <OriginFilter value={origin} onChange={setOrigin} counts={alertCounts} />
         <Panel
           title="Operational alert queue"
           subtitle="Every signal includes its trigger, source record, owner, and next action."
@@ -679,7 +736,7 @@ export function Operations() {
               Snapshot: dateLabel(selected.reporting_date),
               'Usable stock': number(selected.usable_stock) + ' ' + (selected.unit || ''),
               'Daily consumption': selected.daily_consumption?.toFixed(2) || 'Unavailable',
-              'Expected delivery': dateLabel(selected.expected_delivery),
+              'Expected delivery': deliveryLabel(selected.expected_delivery, data?.reference_date),
             }}
           />
           <Notice tone={selected.risk === 'Critical' ? 'warning' : 'info'}>

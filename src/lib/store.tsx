@@ -9,8 +9,20 @@ import {
   type UserProfile,
 } from '../../shared/domain';
 export type Row = { id: string; [key: string]: any }; // API record boundary; domain engines use validated types.
+export type OriginPair = { sample: number; real: number };
+export type OriginSummary = Record<string, OriginPair> & {
+  has_sample: boolean;
+  has_real: boolean;
+  sample_label: string;
+  simulated_prefix: string;
+};
 export type ProjectData = {
   project: Project;
+  /** Server-computed, shared by every module (server/origin.ts). */
+  origin_summary?: OriginSummary;
+  data_state?: string;
+  /** Operational reference date the server evaluates against (project.settings.as_of). */
+  reference_date?: string;
   user?: Row & Record<string, unknown>;
   my_role?: Role;
 } & Record<
@@ -73,6 +85,8 @@ type Store = {
   switchPersona: (role: Role) => Promise<void>;
   setData: React.Dispatch<React.SetStateAction<ProjectData | null>>;
   realtimeConnected: boolean;
+  /** Truthful stream state: connected | reconnecting | polling (stream off). */
+  realtimeState: 'connected' | 'reconnecting' | 'polling';
   liveEvents: Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>;
 };
 const Context = createContext<Store | null>(null);
@@ -84,6 +98,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [error, setError] = useState(''),
     [toast, setToast] = useState<{ message: string; error: boolean } | null>(null),
     [realtimeConnected, setRealtimeConnected] = useState(false),
+    [realtimeState, setRealtimeState] = useState<'connected' | 'reconnecting' | 'polling'>(
+      'reconnecting',
+    ),
     [liveEvents, setLiveEvents] = useState<Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>>([]);
 
   const notify = useCallback((message: string, error = false) => setToast({ message, error }), []);
@@ -146,6 +163,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const schedulePoll = () => {
       if (closed) return;
       setRealtimeConnected(false);
+      setRealtimeState('polling');
       const tick = async () => {
         if (closed) return;
         try {
@@ -186,10 +204,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         es.onopen = () => {
           failures = 0;
           setRealtimeConnected(true);
+          setRealtimeState('connected');
         };
 
         es.addEventListener('connected', () => {
           setRealtimeConnected(true);
+          setRealtimeState('connected');
         });
 
         const handlePushEvent = (e: MessageEvent) => {
@@ -214,6 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         es.onerror = () => {
           setRealtimeConnected(false);
+          setRealtimeState('reconnecting');
           es?.close();
           failures += 1;
           // 2s, 4s, 8s … capped at 30s; after 3 failures switch to polling.
@@ -222,6 +243,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
       } catch {
         setRealtimeConnected(false);
+        setRealtimeState('reconnecting');
         failures += 1;
         retryTimeout = setTimeout(() => void connectSse(), 5000);
       }
@@ -291,6 +313,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         switchPersona,
         setData,
         realtimeConnected,
+        realtimeState,
         liveEvents,
       }}
     >

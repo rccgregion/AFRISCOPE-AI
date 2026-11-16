@@ -7,11 +7,6 @@ import {
   RefreshCw,
   Copy,
   Mail,
-  Download,
-  HardDrive,
-  Radio,
-  Zap,
-  Clock,
 } from 'lucide-react';
 import { useStore, useAction, type Row } from '../lib/store';
 import { api } from '../lib/api';
@@ -28,6 +23,8 @@ import {
 } from '../components/ui';
 import { ROLES, ROLE_LABELS, type Role, AS_OF } from '../../shared/domain';
 import { DataControls } from '../components/origin';
+import { accessScopeLabel, isOrganisationWide } from '../lib/access';
+import { ConnectorPanel, BackupPanel } from '../components/connectors';
 export function Projects() {
   const { workspace, project, selectProject, allow } = useStore();
   const [create, setCreate] = useState(false);
@@ -192,7 +189,11 @@ export function Administration() {
         title="Project membership"
         subtitle="Role changes apply to the current project. Organisation administrators retain organisation-wide access."
         action={
-          <Button disabled={!allow('admin')} onClick={() => setInvite(true)}>
+          <Button
+            disabled={!allow('admin')}
+            title={allow('admin') ? '' : 'Requires the organisation administrator role'}
+            onClick={() => setInvite(true)}
+          >
             <Plus size={15} />
             Invite member
           </Button>
@@ -235,10 +236,20 @@ export function Administration() {
             {
               key: 'access',
               label: 'Access',
-              render: () => <Badge tone="green">Project scoped</Badge>,
+              render: (r) => (
+                <Badge tone={isOrganisationWide(String(r.role)) ? 'green' : 'neutral'}>
+                  {accessScopeLabel(String(r.role))}
+                </Badge>
+              ),
             },
           ]}
         />
+        {!allow('admin') && (
+          <p className="disabled-reason">
+            Disabled: changing a project role needs the organisation administrator role. Your role
+            is {ROLE_LABELS[role]}.
+          </p>
+        )}
       </Panel>
       <div className="two-col">
         <Panel title="Dataset access policy">
@@ -262,11 +273,27 @@ export function Administration() {
               variant="danger"
               className="mt-4"
               disabled={!isDemo || !allow('admin')}
+              title={
+                !allow('admin')
+                  ? 'Requires the organisation administrator role'
+                  : !isDemo
+                    ? 'Only available for the synthetic demonstration organisation'
+                    : ''
+              }
               onClick={() => setReset(true)}
             >
               <RefreshCw size={15} />
               Reset demonstration
             </Button>
+            {(!isDemo || !allow('admin')) && (
+              <p className="disabled-reason">
+                {!allow('admin')
+                  ? 'Disabled: your role (' +
+                    ROLE_LABELS[role] +
+                    ') cannot reset the demonstration. An organisation administrator must do it.'
+                  : 'Disabled: this workspace is a private organisation, not the synthetic demonstration.'}
+              </p>
+            )}
           </div>
         </Panel>
       </div>
@@ -394,6 +421,10 @@ export function SettingsPage() {
     [connectors, setConnectors] = useState<Row[]>([]),
     [syncBusy, setSyncBusy] = useState<string | null>(null),
     [webhookBusy, setWebhookBusy] = useState(false);
+  const databaseInfo = (health?.database_info as Row | undefined) || null;
+  const preferences =
+    ((workspace?.user as Row | undefined)?.preferences as { in_app_alerts?: boolean } | undefined) ||
+    {};
 
   const loadBackups = useCallback(() => {
     api<{ backups: Row[] }>('/backups')
@@ -436,6 +467,35 @@ export function SettingsPage() {
               Authentication: 'Secure local session or explicit demo access',
             }}
           />
+          {/* Display name belongs with the account, not with notification
+              preferences (Part 4.6). */}
+          <form
+            className="p-5 stack"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const f = new FormData(e.currentTarget);
+              await action(
+                () =>
+                  api('/settings/profile', {
+                    method: 'PATCH',
+                    body: {
+                      full_name: f.get('full_name'),
+                      preferences: {
+                        in_app_alerts: Boolean(preferences.in_app_alerts),
+                        email_digest: false,
+                      },
+                    },
+                  }),
+                'Display name saved',
+              );
+            }}
+          >
+            <label className="form-field">
+              <span>Display name</span>
+              <input name="full_name" defaultValue={workspace?.user.full_name} required />
+            </label>
+            <Button variant="secondary">Save display name</Button>
+          </form>
           <div className="p-5">
             <Notice>
               Password recovery requires administrator identity verification. Email recovery is not
@@ -454,7 +514,7 @@ export function SettingsPage() {
                   api('/settings/profile', {
                     method: 'PATCH',
                     body: {
-                      full_name: f.get('full_name'),
+                      full_name: workspace?.user.full_name,
                       preferences: { in_app_alerts: f.get('alerts') === 'on', email_digest: false },
                     },
                   }),
@@ -462,12 +522,12 @@ export function SettingsPage() {
               );
             }}
           >
-            <label className="form-field">
-              <span>Display name</span>
-              <input name="full_name" defaultValue={workspace?.user.full_name} required />
-            </label>
             <label className="checkbox-label">
-              <input type="checkbox" name="alerts" defaultChecked />
+              <input
+                type="checkbox"
+                name="alerts"
+                defaultChecked={Boolean(preferences.in_app_alerts)}
+              />
               Show in-app operational alerts
             </label>
             <small className="muted">
@@ -525,282 +585,31 @@ export function SettingsPage() {
           </Button>
         </form>
       </Panel>
-      <Panel
-        title="Automated recurring backups & disaster recovery"
-        subtitle="Full database state snapshots with SHA-256 integrity validation. Automated recurring schedule runs every 6 hours."
-        action={
-          <Button
-            variant="secondary"
-            busy={backupBusy}
-            disabled={!allow('manage')}
-            onClick={async () => {
-              setBackupBusy(true);
-              try {
-                await api('/backups', { body: { label: 'Manual administrative backup' } });
-                notify('Snapshot created successfully');
-                loadBackups();
-              } catch (e) {
-                notify((e as Error).message, true);
-              }
-              setBackupBusy(false);
-            }}
-          >
-            <HardDrive size={15} />
-            Create snapshot now
-          </Button>
-        }
-      >
-        <div className="p-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-neutral-900/40 rounded-lg border border-neutral-800">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-md bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                <Clock size={18} />
-              </span>
-              <div>
-                <strong className="text-sm font-medium text-neutral-100">Recurring schedule active</strong>
-                <p className="text-xs text-neutral-400">Snapshots automatically taken every 6 hours. Rolling 12 backups retained.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge tone="green">Automated 6h</Badge>
-              <Badge tone="neutral">SHA-256 Checksum</Badge>
-            </div>
-          </div>
-
-          <Table
-            rows={backups}
-            label="Database backups"
-            columns={[
-              {
-                key: 'filename',
-                label: 'Snapshot file',
-                render: (r) => (
-                  <div className="cell-stack">
-                    <strong className="text-xs font-mono">{r.filename}</strong>
-                    <span className="text-xs text-neutral-400">
-                      {new Date(r.created_at).toLocaleString()} · {r.backup_type}
-                    </span>
-                  </div>
-                ),
-              },
-              {
-                key: 'record_count',
-                label: 'Records',
-                render: (r) => `${(r.record_count || 0).toLocaleString()} rows`,
-              },
-              {
-                key: 'file_size_bytes',
-                label: 'Size',
-                render: (r) => `${((r.file_size_bytes || 0) / 1024).toFixed(1)} KB`,
-              },
-              {
-                key: 'checksum',
-                label: 'SHA-256',
-                render: (r) => (
-                  <code className="text-xs font-mono text-neutral-400">
-                    {r.checksum ? r.checksum.slice(0, 14) + '…' : '—'}
-                  </code>
-                ),
-              },
-              {
-                key: 'download',
-                label: 'Action',
-                render: (r) => (
-                  <a
-                    href={`/api/backups/${encodeURIComponent(r.filename)}/download`}
-                    download={r.filename}
-                    className="btn btn-secondary text-xs px-2.5 py-1 inline-flex items-center gap-1.5"
-                  >
-                    <Download size={13} />
-                    Download
-                  </a>
-                ),
-              },
-            ]}
-          />
-        </div>
-      </Panel>
-      <Panel
-        title="Live data connectors & Supabase webhooks"
-        subtitle="Connect real external logistics APIs and receive real-time database change events via Webhooks & Server-Sent Events (SSE)."
-        action={
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full border ${
-                realtimeConnected
-                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-800/60'
-                  : 'bg-amber-950/60 text-amber-400 border-amber-800/60'
-              }`}
-            >
-              <Radio size={12} className={realtimeConnected ? 'animate-pulse' : ''} />
-              {realtimeConnected ? 'Live SSE Connected' : 'Connecting Stream...'}
-            </span>
-          </div>
-        }
-      >
-        <div className="p-5 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Supabase Database Webhook Intake
-                </span>
-                <Badge tone="green">Active</Badge>
-              </div>
-              <p className="text-xs text-neutral-300">
-                Incoming HTTP Webhooks push instant updates to browser sessions via real-time SSE stream.
-              </p>
-              <div className="bg-black/40 rounded p-2 text-xs font-mono text-emerald-400 flex items-center justify-between">
-                <span>POST /api/webhooks/supabase</span>
-                <button
-                  type="button"
-                  className="text-neutral-400 hover:text-white"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(location.origin + '/api/webhooks/supabase');
-                    notify('Webhook URL copied to clipboard');
-                  }}
-                >
-                  <Copy size={13} />
-                </button>
-              </div>
-              <div className="pt-2 flex justify-end">
-                <Button
-                  variant="secondary"
-                  busy={webhookBusy}
-                  onClick={async () => {
-                    setWebhookBusy(true);
-                    try {
-                      await api('/webhooks/supabase', {
-                        body: {
-                          type: 'operational_alerts',
-                          event: 'INSERT',
-                          record: {
-                            id: 'wh-sim-' + Date.now(),
-                            title: 'Live Webhook Push: Stock Buffer Threshold Alert',
-                            facility_name: 'St. Jude District Hospital',
-                            risk: 'Elevated',
-                            triggering_condition: 'Real-time database webhook push simulation',
-                            category: 'stock_buffer',
-                          },
-                        },
-                      });
-                      notify('Test webhook ping sent! Check top notification stream.');
-                    } catch (e) {
-                      notify((e as Error).message, true);
-                    }
-                    setWebhookBusy(false);
-                  }}
-                >
-                  <Zap size={13} />
-                  Simulate Webhook Push
-                </Button>
-              </div>
-            </div>
-
-            <div className="p-4 bg-neutral-900/40 rounded-lg border border-neutral-800 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                  Webhook Subscriptions
-                </span>
-                <Badge tone="neutral">3 Subscriptions</Badge>
-              </div>
-              <ul className="text-xs text-neutral-300 space-y-1.5 pt-1">
-                <li className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="font-mono text-neutral-200">operational_alerts</span>
-                  <span className="text-emerald-400">INSERT / UPDATE</span>
-                </li>
-                <li className="flex items-center justify-between py-1 border-b border-neutral-800/60">
-                  <span className="font-mono text-neutral-200">inventory_records</span>
-                  <span className="text-emerald-400">INSERT / UPDATE</span>
-                </li>
-                <li className="flex items-center justify-between py-1">
-                  <span className="font-mono text-neutral-200">recommendations</span>
-                  <span className="text-emerald-400">STATE CHANGE</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-medium text-neutral-200 mb-3">Live Data Connectors</h4>
-            <Table
-              rows={connectors}
-              label="Data connectors"
-              columns={[
-                {
-                  key: 'name',
-                  label: 'Connector',
-                  render: (r) => (
-                    <div className="cell-stack">
-                      <strong>{r.name}</strong>
-                      <span className="text-xs text-neutral-400 font-mono">{r.type}</span>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'status',
-                  label: 'Status',
-                  render: (r) => (
-                    <Badge tone={r.status === 'active' ? 'green' : 'neutral'}>
-                      {r.status}
-                    </Badge>
-                  ),
-                },
-                {
-                  key: 'last_sync_at',
-                  label: 'Last sync',
-                  render: (r) => (r.last_sync_at ? new Date(r.last_sync_at).toLocaleString() : 'Never'),
-                },
-                {
-                  key: 'sync_count',
-                  label: 'Sync count',
-                  render: (r) => `${r.sync_count || 0} runs`,
-                },
-                {
-                  key: 'action',
-                  label: 'Trigger',
-                  render: (r) => (
-                    <Button
-                      variant="secondary"
-                      busy={syncBusy === r.id}
-                      disabled={!allow('manage')}
-                      onClick={async () => {
-                        setSyncBusy(r.id);
-                        try {
-                          await api(
-                            `/projects/${project!.id}/connectors/${r.id}/sync`,
-                            { body: {} },
-                          );
-                          notify(`Live connector "${r.name}" synced successfully`);
-                          loadConnectors();
-                        } catch (e) {
-                          notify((e as Error).message, true);
-                        }
-                        setSyncBusy(null);
-                      }}
-                    >
-                      <RefreshCw size={13} />
-                      Sync now
-                    </Button>
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </div>
-      </Panel>
+      <BackupPanel />
+      <ConnectorPanel />
       <div className="two-col">
         <Panel title="Environment & connection status">
           <KeyValue
             data={{
               API: health?.status === 'ok' ? 'Connected' : 'Unavailable',
+              // Name the database actually in use, not a generic label (5.5).
               Database: health?.database || 'Checking…',
+              'Database driver': databaseInfo?.driver === 'pglite' ? 'PGlite (embedded Postgres)' : databaseInfo?.driver === 'postgres' ? 'PostgreSQL (networked)' : 'Checking…',
+              'Data persistence': databaseInfo
+                ? databaseInfo.ephemeral
+                  ? 'Ephemeral — nothing survives a restart'
+                  : 'Persistent'
+                : 'Checking…',
               'Explanation service': health?.llm || 'Checking…',
               'Demo access': health?.demo ? 'Enabled' : 'Disabled',
               'File limits': 'CSV 5 MB / XLSX 2 MB / 5,000 rows',
               'External provider credentials': 'Server-side only; never sent to the browser',
             }}
           />
+          <p className="p-5 muted small">
+            Host, port and database name are reported; user names, passwords and connection
+            strings are never sent to the browser.
+          </p>
           <div className="p-5">
             <Badge tone="green">No external credentials required for local mode</Badge>
           </div>
