@@ -8,6 +8,10 @@ import {
   MixedOriginWarning,
   NoDataYet,
   matchesScope,
+  autoMap,
+  applyMapping,
+  FACILITY_TARGETS,
+  STOCK_TARGETS,
   SAMPLE_BADGE_TEXT,
 } from '../../src/components/origin';
 
@@ -65,5 +69,31 @@ describe('sample-data labelling', () => {
     expect(empty).toContain('/api/import-templates/stock');
     // Nothing implies the data was deleted or hidden.
     expect(empty).toMatch(/Nothing has been cleared or hidden/);
+  });
+});
+
+describe('column mapping', () => {
+  it('auto-matches messy headers to canonical fields', () => {
+    const map = autoMap(['Facility ID', 'Facility Name', 'Latitude', 'Source', 'Extra'], FACILITY_TARGETS);
+    expect(map.facility_id).toBe('Facility ID');
+    expect(map.facility_name).toBe('Facility Name');
+    expect(map.source).toBe('Source');
+    // No fuzzy invention: an unknown canonical field stays unmapped.
+    expect(map.lat).toBe('');
+    expect(map.district_or_lga).toBe('');
+  });
+
+  it('rewrites a mapped file to canonical headers, including quoted values', () => {
+    const csv = 'ID,Name,Units\nNG-1,"Post, One",120\n';
+    const map = autoMap(['ID', 'Name', 'Units'], STOCK_TARGETS);
+    const out = applyMapping(csv, ['facility_id', 'medicine', 'usable_stock_units'], {
+      ...map,
+      facility_id: 'ID',
+      medicine: 'Name',
+      usable_stock_units: 'Units',
+    });
+    const [header, row] = out.split(/\r?\n/);
+    expect(header).toBe('facility_id,medicine,usable_stock_units');
+    expect(row).toContain('"Post, One"');
   });
 });

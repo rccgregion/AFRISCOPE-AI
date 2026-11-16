@@ -4358,3 +4358,27 @@ td strong {
   font-size: 12px;
   color: var(--muted);
 }
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.mapping-fields {
+  display: grid;
+  gap: 6px;
+}
+.mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.mapping-row select {
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
