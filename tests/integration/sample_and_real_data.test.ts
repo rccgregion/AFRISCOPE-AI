@@ -125,6 +125,17 @@ describe('sample data marking', () => {
 });
 
 describe('real data import validation', () => {
+  it('serves templates without a session so plain download links work', async () => {
+    const res = await request(app).get('/api/import-templates/facilities');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/text\/csv/);
+    expect(res.text).toContain('facility_id,facility_name');
+    expect(res.text).toContain('YOUR-FACILITY-ID');
+    const json = await request(app).get('/api/import-templates/stock?format=json');
+    expect(json.status).toBe(200);
+    expect(json.body.fields.length).toBe(8);
+  });
+
   it('provides templates with no invented facility data', () => {
     const f = facilityTemplateCsv();
     expect(f.split('\n')[0]).toContain('facility_id,facility_name');

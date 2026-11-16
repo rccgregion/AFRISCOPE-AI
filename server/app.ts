@@ -2085,6 +2085,8 @@ export function createApp(db: Database) {
     });
   });
 
+  // Templates are static skeletons with placeholder values only, so they are
+  // served without a session: a plain <a download> link must work.
   route('get', '/import-templates/:kind', async (req, res) => {
     const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
     const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
@@ -2096,7 +2098,7 @@ export function createApp(db: Database) {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
     res.send(csv);
-  });
+  }, false);
 
   route('get', '/projects/:id/sample-data/dry-run', async (req, res) => {
     const id = uuid.parse(req.params.id);
