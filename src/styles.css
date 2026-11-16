@@ -4722,7 +4722,8 @@ td strong {
   font-weight: 600;
 }
 .as-of-sep {
-  color: var(--border-strong, var(--border));
+  /* Readable, not decorative: axe (and a low-vision reader) treats this as text. */
+  color: var(--muted);
 }
 
 /* Why a control is disabled, stated in place (Part 3.1). */
@@ -5142,4 +5143,20 @@ td strong {
     background: #ffffff;
     color: var(--deep-surface);
   }
+}
+
+/* Part 4.2 / accessibility: the provenance and empty-state additions above all
+   use the readable tokens. Anything decorative that axe still reads as text
+   (separators, muted labels) must meet 4.5:1 on its own background. */
+.as-of-line,
+.empty-state p,
+.provenance-cell small,
+.provenance-cell span,
+.disabled-reason,
+.sync-reason {
+  color: #45564c;
+}
+.provenance-cell span,
+.empty-state small {
+  color: #4e6557;
 }
