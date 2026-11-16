@@ -208,6 +208,16 @@ test('key workspace views pass automated WCAG A/AA checks', async ({ page }) => 
     const result = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
       .analyze();
-    expect(result.violations).toEqual([]);
+    // Report the rule ids and the offending selectors, which is what makes a
+    // failure actionable from the CI annotation.
+    expect(
+      result.violations.map(
+        (v) =>
+          `${v.id} (${v.nodes.length}): ${v.nodes
+            .map((n) => n.target.join(' '))
+            .slice(0, 3)
+            .join(' | ')}`,
+      ),
+    ).toEqual([]);
   }
 });
