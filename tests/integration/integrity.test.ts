@@ -14,7 +14,10 @@ let db: Database, app: Express;
 const agents: Record<string, ReturnType<typeof request.agent>> = {};
 const path = (p: string) => '/api' + p;
 const post = (role: string, p: string, body: unknown) =>
-  agents[role].post(path(p)).set('X-AfriScope-Request', '1').send(body as object);
+  agents[role]
+    .post(path(p))
+    .set('X-AfriScope-Request', '1')
+    .send(body as object);
 const get = (role: string, p: string) => agents[role].get(path(p)).set('X-AfriScope-Request', '1');
 
 let projectId = '';
@@ -82,9 +85,14 @@ describe('1.1 connectors cannot fabricate results', () => {
   });
 
   it('reports a real failure when the configured endpoint fails', async () => {
-    const connector = await configureConnector(db, projectId, (await listConnectors(db, projectId))[1].id, {
-      endpoint_url: 'https://example.org/stock.json',
-    } as never);
+    const connector = await configureConnector(
+      db,
+      projectId,
+      (await listConnectors(db, projectId))[1].id,
+      {
+        endpoint_url: 'https://example.org/stock.json',
+      } as never,
+    );
     expect(connector.connection_mode).toBe('configured');
     expect(connector.can_sync).toBe(true);
     expect(connector.endpoint_host).toBe('example.org');
@@ -184,11 +192,16 @@ describe('1.3 backup scheduler claims', () => {
   it('stores the snapshot payload so a download works without a writable disk', async () => {
     const snap = await post('organisation_admin', '/backups', {}).expect(201);
     const row = await db.admin(async (c) => {
-      const r = await c.query('select payload from backups where filename=$1', [snap.body.filename]);
+      const r = await c.query('select payload from backups where filename=$1', [
+        snap.body.filename,
+      ]);
       return r.rows[0];
     });
     expect(row.payload).toBeTruthy();
-    const download = await get('organisation_admin', `/backups/${encodeURIComponent(snap.body.filename)}/download`);
+    const download = await get(
+      'organisation_admin',
+      `/backups/${encodeURIComponent(snap.body.filename)}/download`,
+    );
     expect(download.status).toBe(200);
     const parsed = JSON.parse(download.text);
     expect(parsed.checksum ?? snap.body.checksum).toBe(snap.body.checksum);
@@ -226,9 +239,7 @@ describe('1.4 one shared origin counter', () => {
     expect(visibleFacilities).toBe(summary.facilities.sample + summary.facilities.real);
     // Funding releases, shown on the Finance tab, equal their counted total.
     const visibleFunding = (payload.body.funding_releases as Row[]).length;
-    expect(visibleFunding).toBe(
-      summary.funding_releases.sample + summary.funding_releases.real,
-    );
+    expect(visibleFunding).toBe(summary.funding_releases.sample + summary.funding_releases.real);
     // Stock rows rendered by /stock equal the latest-slice count.
     const stock = await get('organisation_admin', `/projects/${sampleProjectId}/stock`).expect(200);
     expect((stock.body.rows as Row[]).length).toBe(
@@ -237,7 +248,10 @@ describe('1.4 one shared origin counter', () => {
   });
 
   it('publishes the same summary through the origin endpoint', async () => {
-    const res = await get('organisation_admin', `/projects/${sampleProjectId}/origin-summary`).expect(200);
+    const res = await get(
+      'organisation_admin',
+      `/projects/${sampleProjectId}/origin-summary`,
+    ).expect(200);
     const summary = await db.admin((c) => originSummary(c, sampleProjectId));
     expect(res.body.counts.facilities).toEqual(summary.facilities);
     expect(res.body.mixed).toBe(true);
@@ -300,7 +314,7 @@ describe('2.3 operational reference date', () => {
     const res = await get('organisation_admin', `/projects/${sampleProjectId}`).expect(200);
     expect(res.body.reference_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(res.body.reference_date).toBe(
-      String((res.body.project.settings?.as_of || '2026-09-30')).slice(0, 10),
+      String(res.body.project.settings?.as_of || '2026-09-30').slice(0, 10),
     );
   });
 

@@ -11,7 +11,10 @@ const ACRONYMS: [RegExp, string][] = [
 ];
 
 export function displayText(value: string): string {
-  return ACRONYMS.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), value);
+  return ACRONYMS.reduce(
+    (text, [pattern, replacement]) => text.replace(pattern, replacement),
+    value,
+  );
 }
 
 export function displayTextDeep<T>(value: T): T {

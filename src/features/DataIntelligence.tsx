@@ -86,7 +86,9 @@ export function DataIntelligence() {
   const scopedDatasets = (data?.datasets || []).filter((d) => matchesScope(d.data_origin, scope));
   /** Records exist, but the origin filter hides them all. */
   const filteredOut = (data?.datasets || []).length > 0 && scopedDatasets.length === 0;
-  const scopedFacilities = (data?.facilities || []).filter((f) => matchesScope(f.data_origin, scope));
+  const scopedFacilities = (data?.facilities || []).filter((f) =>
+    matchesScope(f.data_origin, scope),
+  );
   return (
     <>
       <PageHeader
@@ -165,7 +167,8 @@ export function DataIntelligence() {
                 <div className="dataset-meta">
                   <span>{d.kind.replaceAll('_', ' ')}</span>
                   <span>
-                    {(data?.dataset_versions || []).filter((v) => v.dataset_id === d.id).length} version(s)
+                    {(data?.dataset_versions || []).filter((v) => v.dataset_id === d.id).length}{' '}
+                    version(s)
                   </span>
                 </div>
                 <OriginBadge origin={d.data_origin} />
@@ -226,12 +229,19 @@ export function DataIntelligence() {
                     key: 'data_origin',
                     label: 'Origin',
                     render: (r) =>
-                      r.data_origin === 'sample' ? <OriginBadge origin="sample" /> : <Badge tone="green">Real</Badge>,
+                      r.data_origin === 'sample' ? (
+                        <OriginBadge origin="sample" />
+                      ) : (
+                        <Badge tone="green">Real</Badge>
+                      ),
                   },
                 ]}
               />
             ) : (
-              <NoDataYet what="facility records" onImport={allow('data') ? () => setWizard(true) : undefined} />
+              <NoDataYet
+                what="facility records"
+                onImport={allow('data') ? () => setWizard(true) : undefined}
+              />
             )}
           </Panel>
           <Panel

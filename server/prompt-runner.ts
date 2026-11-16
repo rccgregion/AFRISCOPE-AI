@@ -96,7 +96,8 @@ export async function runPrompt(
   if (!def) throw new Error('Unknown prompt');
   const rows = await scopedRows(c, project, scope);
   const counts = await originCounts(c, project);
-  const scopedCount = scope === 'both' ? counts.sample + counts.real : counts[scope === 'sample' ? 'sample' : 'real'];
+  const scopedCount =
+    scope === 'both' ? counts.sample + counts.real : counts[scope === 'sample' ? 'sample' : 'real'];
 
   const base = {
     prompt_id: def.id,
@@ -106,10 +107,9 @@ export async function runPrompt(
     scope_statement: `Data scope used: ${PROMPT_SCOPE_LABEL[scope]}.`,
     unverified_claims: def.unverified_claims ?? [],
     uses_sample_data: rows.some((r) => r.data_origin === 'sample'),
-    sample_label:
-      rows.some((r) => r.data_origin === 'sample')
-        ? 'Sample data - not reported by any facility'
-        : null,
+    sample_label: rows.some((r) => r.data_origin === 'sample')
+      ? 'Sample data - not reported by any facility'
+      : null,
     limitations: [
       'Deterministic computation over rows already imported into this workspace. No language model was called and no external data was fetched.',
       'Decision support only, not a binding decision. A named human must review the underlying rows and the source before acting.',
@@ -142,10 +142,19 @@ export async function runPrompt(
         `${scopedCount} in the selected scope. No facilities, stock levels or financing signals are invented to fill the gap.`,
     };
 
-  const withCoverage = rows.filter((r) => r.coverage_days != null && (r.avg_daily_consumption ?? 0) > 0);
-  const risky = [...withCoverage].sort((a, b) => (a.coverage_days ?? 0) - (b.coverage_days ?? 0)).slice(0, 5);
-  const asOf = rows.reduce((min, r) => (r.as_of_date < min ? r.as_of_date : min), rows[0].as_of_date);
-  const delayed = risky.filter((r) => r.financing_signal && /delay|pending|overdue|await/i.test(r.financing_signal));
+  const withCoverage = rows.filter(
+    (r) => r.coverage_days != null && (r.avg_daily_consumption ?? 0) > 0,
+  );
+  const risky = [...withCoverage]
+    .sort((a, b) => (a.coverage_days ?? 0) - (b.coverage_days ?? 0))
+    .slice(0, 5);
+  const asOf = rows.reduce(
+    (min, r) => (r.as_of_date < min ? r.as_of_date : min),
+    rows[0].as_of_date,
+  );
+  const delayed = risky.filter(
+    (r) => r.financing_signal && /delay|pending|overdue|await/i.test(r.financing_signal),
+  );
 
   const lines: string[] = [];
   if (def.requires.includes('stock') || withCoverage.length) {
@@ -159,7 +168,9 @@ export async function runPrompt(
           `- ${r.facility} (${r.facility_id}, ${r.country ?? 'country not recorded'}) — ${r.medicine}: ` +
             `usable stock ${fmt(r.usable_stock)} units, average daily consumption ${fmt(r.avg_daily_consumption ?? 0)}, ` +
             `coverage ${fmt(r.coverage_days ?? 0)} days, as of ${r.as_of_date}` +
-            (r.financing_signal ? `; financing signal: ${r.financing_signal}` : '; no financing signal recorded') +
+            (r.financing_signal
+              ? `; financing signal: ${r.financing_signal}`
+              : '; no financing signal recorded') +
             '.',
         );
       }
@@ -178,7 +189,11 @@ export async function runPrompt(
 
   if (def.requires.includes('countries')) {
     const byCountry = new Map<string, number>();
-    for (const r of rows) byCountry.set(String(r.country ?? 'not recorded'), (byCountry.get(String(r.country ?? 'not recorded')) ?? 0) + 1);
+    for (const r of rows)
+      byCountry.set(
+        String(r.country ?? 'not recorded'),
+        (byCountry.get(String(r.country ?? 'not recorded')) ?? 0) + 1,
+      );
     lines.push(
       'Readings by country: ' +
         [...byCountry.entries()].map(([k, v]) => `${k} ${v}`).join(', ') +

@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
+import { Layers, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import {
-  Layers,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-} from 'lucide-react';
-import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES, type GisDistrict, type GisFacilityPoint } from '../../shared/gis';
+  DISTRICT_BOUNDARIES,
+  FACILITY_COORDINATES,
+  type GisDistrict,
+  type GisFacilityPoint,
+} from '../../shared/gis';
 
 export interface FacilityRecord {
   id?: string;
@@ -74,7 +74,10 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
       const extId = f.external_id || f.id || 'FAC-UNKNOWN';
       const coords = FACILITY_COORDINATES[extId] || [36.0, -5.0];
       const records = stockRecords.filter((r) => r.external_id === extId || r.facility_id === f.id);
-      const filtered = selectedProduct === 'all' ? records : records.filter((r) => r.product_name === selectedProduct);
+      const filtered =
+        selectedProduct === 'all'
+          ? records
+          : records.filter((r) => r.product_name === selectedProduct);
 
       let highestRisk: 'Critical' | 'Elevated' | 'Stable' = 'Stable';
       if (filtered.some((r) => r.risk === 'Critical')) highestRisk = 'Critical';
@@ -133,7 +136,8 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
             donorId: donorExt,
             donorName: r.transfer_opportunity.donor_facility || donorExt,
             recipientId: recipientExt,
-            recipientName: facilities.find((f) => f.external_id === recipientExt)?.name || recipientExt,
+            recipientName:
+              facilities.find((f) => f.external_id === recipientExt)?.name || recipientExt,
             from: fromCoord,
             to: toCoord,
             productName: r.product_name || 'Medical supplies',
@@ -148,7 +152,10 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
 
   // Compute district aggregated risk
   const districtRiskMap = useMemo(() => {
-    const map = new Map<string, { risk: 'Critical' | 'Elevated' | 'Stable'; count: number; facilities: number }>();
+    const map = new Map<
+      string,
+      { risk: 'Critical' | 'Elevated' | 'Stable'; count: number; facilities: number }
+    >();
     for (const d of DISTRICT_BOUNDARIES) {
       const distFacs = facilityPoints.filter((fp) => d.facilities.includes(fp.external_id));
       let risk: 'Critical' | 'Elevated' | 'Stable' = 'Stable';
@@ -170,8 +177,13 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
         <div className="flex items-center gap-2">
           <Layers size={18} className="text-[#174b3a]" />
           <div>
-            <h3 className="text-sm font-semibold text-[#123c30]">District Health GIS Spatial Intelligence</h3>
-            <p className="text-xs text-[#5d6b60]">GeoJSON administrative boundaries &bull; Stockout heat zones &bull; Redistribution corridors</p>
+            <h3 className="text-sm font-semibold text-[#123c30]">
+              District Health GIS Spatial Intelligence
+            </h3>
+            <p className="text-xs text-[#5d6b60]">
+              GeoJSON administrative boundaries &bull; Stockout heat zones &bull; Redistribution
+              corridors
+            </p>
           </div>
         </div>
 
@@ -362,7 +374,14 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
                       markerEnd="url(#arrowhead)"
                       className="animate-pulse opacity-85"
                     />
-                    <circle cx={midX} cy={midY} r="10" fill="#ffffff" stroke="#1b5742" strokeWidth="1.5" />
+                    <circle
+                      cx={midX}
+                      cy={midY}
+                      r="10"
+                      fill="#ffffff"
+                      stroke="#1b5742"
+                      strokeWidth="1.5"
+                    />
                     <text
                       x={midX}
                       y={midY + 3.5}
@@ -517,22 +536,27 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5d6b60]">Average Coverage:</span>
-                  <span className="font-semibold text-[#123c30]">{selectedFacility.daysOfStock} Days</span>
+                  <span className="font-semibold text-[#123c30]">
+                    {selectedFacility.daysOfStock} Days
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5d6b60]">Country &amp; Jurisdiction:</span>
                   <span className="text-[#25342e]">{selectedFacility.country}</span>
                 </div>
-                {selectedFacility.criticalMedicines && selectedFacility.criticalMedicines.length > 0 && (
-                  <div className="mt-2 bg-[#fdeae8] p-2 rounded border border-[#fadad7]">
-                    <span className="font-semibold text-[#b44940] block mb-1">Stockout Alerts:</span>
-                    <ul className="list-disc pl-4 text-[10.5px] text-[#8c2b23] space-y-0.5">
-                      {selectedFacility.criticalMedicines.map((m) => (
-                        <li key={m}>{m}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {selectedFacility.criticalMedicines &&
+                  selectedFacility.criticalMedicines.length > 0 && (
+                    <div className="mt-2 bg-[#fdeae8] p-2 rounded border border-[#fadad7]">
+                      <span className="font-semibold text-[#b44940] block mb-1">
+                        Stockout Alerts:
+                      </span>
+                      <ul className="list-disc pl-4 text-[10.5px] text-[#8c2b23] space-y-0.5">
+                        {selectedFacility.criticalMedicines.map((m) => (
+                          <li key={m}>{m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
               </div>
             )}
 
@@ -540,11 +564,15 @@ export function GisMap({ facilities = [], stockRecords = [], onSelectFacility }:
               <div className="space-y-2 pt-1 border-t border-[#f0f3ee]">
                 <div className="flex items-center justify-between">
                   <span className="text-[#5d6b60]">Catchment Population:</span>
-                  <span className="font-semibold text-[#123c30]">{selectedDistrict.population.toLocaleString()}</span>
+                  <span className="font-semibold text-[#123c30]">
+                    {selectedDistrict.population.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5d6b60]">Assigned Facilities:</span>
-                  <span className="font-semibold text-[#123c30]">{selectedDistrict.facilities.length} Facilities</span>
+                  <span className="font-semibold text-[#123c30]">
+                    {selectedDistrict.facilities.length} Facilities
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#5d6b60]">Health Zone:</span>

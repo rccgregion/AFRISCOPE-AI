@@ -87,7 +87,9 @@ export function ConnectorPanel() {
                   </div>
                   <div>
                     <dt>Last run</dt>
-                    <dd>{c.last_run_at ? new Date(c.last_run_at).toLocaleString() : 'Never run'}</dd>
+                    <dd>
+                      {c.last_run_at ? new Date(c.last_run_at).toLocaleString() : 'Never run'}
+                    </dd>
                   </div>
                   <div>
                     <dt>Rows returned</dt>
@@ -312,7 +314,9 @@ export function BackupPanel() {
       }
     >
       <div className="p-5 stack">
-        <div className={`scheduler-card ${scheduler?.configured ? 'scheduler-on' : 'scheduler-off'}`}>
+        <div
+          className={`scheduler-card ${scheduler?.configured ? 'scheduler-on' : 'scheduler-off'}`}
+        >
           <span className="scheduler-icon">
             <Clock size={18} />
           </span>
@@ -373,7 +377,9 @@ export function BackupPanel() {
                 key: 'checksum',
                 label: 'SHA-256',
                 render: (r) => (
-                  <code className="mono small">{r.checksum ? `${r.checksum.slice(0, 12)}…` : '—'}</code>
+                  <code className="mono small">
+                    {r.checksum ? `${r.checksum.slice(0, 12)}…` : '—'}
+                  </code>
                 ),
               },
               {

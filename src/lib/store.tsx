@@ -87,7 +87,13 @@ type Store = {
   realtimeConnected: boolean;
   /** Truthful stream state: connected | reconnecting | polling (stream off). */
   realtimeState: 'connected' | 'reconnecting' | 'polling';
-  liveEvents: Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>;
+  liveEvents: Array<{
+    id: string;
+    title: string;
+    message: string;
+    timestamp: string;
+    severity?: string;
+  }>;
 };
 const Context = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -101,7 +107,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [realtimeState, setRealtimeState] = useState<'connected' | 'reconnecting' | 'polling'>(
       'reconnecting',
     ),
-    [liveEvents, setLiveEvents] = useState<Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>>([]);
+    [liveEvents, setLiveEvents] = useState<
+      Array<{ id: string; title: string; message: string; timestamp: string; severity?: string }>
+    >([]);
 
   const notify = useCallback((message: string, error = false) => setToast({ message, error }), []);
   useEffect(() => {
@@ -217,7 +225,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const parsed = JSON.parse(e.data);
             notify(`${parsed.title}: ${parsed.message}`, parsed.severity === 'critical');
             setLiveEvents((prev) => [parsed, ...prev.slice(0, 19)]);
-            if (parsed.type?.includes('alert') || parsed.type?.includes('stock') || parsed.type?.includes('sync')) {
+            if (
+              parsed.type?.includes('alert') ||
+              parsed.type?.includes('stock') ||
+              parsed.type?.includes('sync')
+            ) {
               void refresh();
             }
           } catch {

@@ -544,7 +544,9 @@ function DataProvenance() {
           <div className="provenance-cell">
             <span>Imported rows</span>
             <strong>{stock.real.toLocaleString()}</strong>
-            <small>Carry the source you recorded at import. Not verified by this application.</small>
+            <small>
+              Carry the source you recorded at import. Not verified by this application.
+            </small>
           </div>
           <div className="provenance-cell">
             <span>Labelled [Sample]</span>
@@ -567,16 +569,16 @@ function DataProvenance() {
             name.
           </li>
           <li>
-            Sample alerts, transfers and explanatory text are prefixed{' '}
-            <code>Simulated:</code> wherever they appear.
+            Sample alerts, transfers and explanatory text are prefixed <code>Simulated:</code>{' '}
+            wherever they appear.
           </li>
           <li>
             Every exported CSV contains a <code>data_origin</code> column and an{' '}
             <code>origin_label</code> column, so a file cannot lose its label by being downloaded.
           </li>
           <li>
-            Aggregated counts are computed once on the server per origin, so the header,
-            Data Intelligence, Operations, Finance and Alerts cannot disagree.
+            Aggregated counts are computed once on the server per origin, so the header, Data
+            Intelligence, Operations, Finance and Alerts cannot disagree.
           </li>
           <li>
             {unprefixed > 0

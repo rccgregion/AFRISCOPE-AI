@@ -124,7 +124,8 @@ export function validateFacilitiesCsv(
     const id = textOf(raw, 'facility_id');
     const name = textOf(raw, 'facility_name');
     const source = textOf(raw, 'source');
-    if (!id) return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
+    if (!id)
+      return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
     if (!name)
       return rejections.push({ row, field: 'facility_name', reason: 'facility_name is required' });
     if (!source)
@@ -174,7 +175,10 @@ export function validateFacilitiesCsv(
       const bounds = COUNTRY_BOUNDS[country.toLowerCase()];
       if (bounds) {
         const inside =
-          lat >= bounds.lat[0] && lat <= bounds.lat[1] && lon >= bounds.lon[0] && lon <= bounds.lon[1];
+          lat >= bounds.lat[0] &&
+          lat <= bounds.lat[1] &&
+          lon >= bounds.lon[0] &&
+          lon <= bounds.lon[1];
         if (!inside)
           rejections.push({
             row,
@@ -345,8 +349,16 @@ export const DATA_DICTIONARY: Record<
   Array<{ field: string; required: boolean; description: string }>
 > = {
   facilities: [
-    { field: 'facility_id', required: true, description: 'Stable identifier, unique within the file' },
-    { field: 'facility_name', required: true, description: 'Facility name as published by the source' },
+    {
+      field: 'facility_id',
+      required: true,
+      description: 'Stable identifier, unique within the file',
+    },
+    {
+      field: 'facility_name',
+      required: true,
+      description: 'Facility name as published by the source',
+    },
     { field: 'country', required: false, description: 'Country name; must match the coordinates' },
     { field: 'state_or_region', required: false, description: 'State or region' },
     { field: 'district_or_lga', required: false, description: 'District or LGA' },
@@ -356,7 +368,11 @@ export const DATA_DICTIONARY: Record<
       required: false,
       description: 'Catchment population, number >= 0',
     },
-    { field: 'lat', required: false, description: 'Latitude, -90..90; supply with lon or not at all' },
+    {
+      field: 'lat',
+      required: false,
+      description: 'Latitude, -90..90; supply with lon or not at all',
+    },
     { field: 'lon', required: false, description: 'Longitude, -180..180' },
     {
       field: 'source',

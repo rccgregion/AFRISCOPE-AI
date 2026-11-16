@@ -209,11 +209,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="nav-caption">GOVERN & COLLABORATE</div>
           {navigation.slice(6, 9).map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.label : undefined}
-            >
+            <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined}>
               <item.icon size={17} />
               <span>{item.label}</span>
             </NavLink>
@@ -221,11 +217,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="nav-caption">SYSTEM</div>
           {navigation.slice(9).map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.label : undefined}
-            >
+            <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined}>
               <item.icon size={17} />
               <span>{item.label}</span>
             </NavLink>
@@ -262,7 +254,11 @@ export function Shell({ children }: { children: ReactNode }) {
             </label>
           </div>
           <div className="header-actions">
-            <button className="global-search-button" onClick={() => setSearch(true)} title="Search (⌘K)">
+            <button
+              className="global-search-button"
+              onClick={() => setSearch(true)}
+              title="Search (⌘K)"
+            >
               <Search size={16} />
               <span className="search-label">Search workspace</span>
               <kbd className="search-kbd">
@@ -313,11 +309,14 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setNotifications(true)}
             >
               <Bell size={18} />
-              {(!!data?.operational_alerts.filter((a) => a.status === 'Open').length || !!liveEvents.length) && (
-                <i className="notification-dot" />
-              )}
+              {(!!data?.operational_alerts.filter((a) => a.status === 'Open').length ||
+                !!liveEvents.length) && <i className="notification-dot" />}
             </button>
-            <Link to="/guide" className="icon-btn header-help-link" aria-label="Help and documentation">
+            <Link
+              to="/guide"
+              className="icon-btn header-help-link"
+              aria-label="Help and documentation"
+            >
               <CircleHelp size={18} />
             </Link>
             <span className="header-divider" />

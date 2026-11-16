@@ -34,7 +34,9 @@ export function EmptyState({
 }) {
   const filtered = variant === 'filtered';
   return (
-    <div className={`empty-state ${filtered ? 'is-filtered' : 'is-empty'} ${compact ? 'compact' : ''}`}>
+    <div
+      className={`empty-state ${filtered ? 'is-filtered' : 'is-empty'} ${compact ? 'compact' : ''}`}
+    >
       <span className="empty-state-icon">
         {filtered ? <FilterX size={24} /> : <Inbox size={26} />}
       </span>

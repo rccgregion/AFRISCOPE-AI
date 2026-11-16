@@ -14,11 +14,7 @@
 import type { Database } from './db.js';
 import { realtime } from './realtime.js';
 
-export type ConnectorSource =
-  | 'supabase_direct'
-  | 'dhis2_api'
-  | 'openlmis_feed'
-  | 'custom_webhook';
+export type ConnectorSource = 'supabase_direct' | 'dhis2_api' | 'openlmis_feed' | 'custom_webhook';
 
 export type ConnectorMode = 'not_configured' | 'configured';
 
@@ -105,9 +101,17 @@ function toView(r: Record<string, unknown>): ConnectorView {
   const endpoint = configured ? configuredEndpoint(config) : null;
   const can_sync = configured && endpoint !== null;
   const lastRunAt = r.last_run_at ? String(r.last_run_at) : null;
-  const lastRunRows = r.last_run_rows === null || r.last_run_rows === undefined ? null : Number(r.last_run_rows);
-  const lastRunOk = r.last_run_ok === null || r.last_run_ok === undefined ? null : Boolean(r.last_run_ok);
-  const status = !can_sync ? 'not_configured' : lastRunOk === null ? 'never_run' : lastRunOk ? 'ok' : 'error';
+  const lastRunRows =
+    r.last_run_rows === null || r.last_run_rows === undefined ? null : Number(r.last_run_rows);
+  const lastRunOk =
+    r.last_run_ok === null || r.last_run_ok === undefined ? null : Boolean(r.last_run_ok);
+  const status = !can_sync
+    ? 'not_configured'
+    : lastRunOk === null
+      ? 'never_run'
+      : lastRunOk
+        ? 'ok'
+        : 'error';
   const label =
     status === 'not_configured'
       ? 'Not configured'
@@ -134,7 +138,8 @@ function toView(r: Record<string, unknown>): ConnectorView {
     last_run_at: lastRunAt,
     last_run_rows: lastRunRows,
     last_run_ok: lastRunOk,
-    http_status: r.http_status === null || r.http_status === undefined ? null : Number(r.http_status),
+    http_status:
+      r.http_status === null || r.http_status === undefined ? null : Number(r.http_status),
     last_error: r.last_error ? String(r.last_error) : null,
     run_count: Number(r.run_count ?? 0),
     last_sync_at: lastRunAt,
@@ -265,10 +270,10 @@ export async function syncConnector(
   const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   const connector = await db.admin(async (c) => {
-    const res = await c.query(
-      'select * from live_data_connectors where id=$1 and project_id=$2',
-      [connectorId, projectId],
-    );
+    const res = await c.query('select * from live_data_connectors where id=$1 and project_id=$2', [
+      connectorId,
+      projectId,
+    ]);
     return res.rows[0];
   });
   if (!connector) throw Object.assign(new Error('Live data connector not found'), { status: 404 });
@@ -304,7 +309,8 @@ export async function syncConnector(
     });
     httpStatus = response.status;
     const text = await response.text();
-    if (!response.ok) throw new Error(`Endpoint responded ${response.status} ${response.statusText}`.trim());
+    if (!response.ok)
+      throw new Error(`Endpoint responded ${response.status} ${response.statusText}`.trim());
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);

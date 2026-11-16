@@ -74,7 +74,10 @@ describe('sample-data labelling', () => {
 
 describe('column mapping', () => {
   it('auto-matches messy headers to canonical fields', () => {
-    const map = autoMap(['Facility ID', 'Facility Name', 'Latitude', 'Source', 'Extra'], FACILITY_TARGETS);
+    const map = autoMap(
+      ['Facility ID', 'Facility Name', 'Latitude', 'Source', 'Extra'],
+      FACILITY_TARGETS,
+    );
     expect(map.facility_id).toBe('Facility ID');
     expect(map.facility_name).toBe('Facility Name');
     expect(map.source).toBe('Source');

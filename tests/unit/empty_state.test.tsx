@@ -56,7 +56,11 @@ describe('EmptyState', () => {
 
   it('renders a compact variant for in-panel use', () => {
     const small = html(
-      createElement(EmptyState, { compact: true, title: 'Nothing to compare yet', description: 'd' }),
+      createElement(EmptyState, {
+        compact: true,
+        title: 'Nothing to compare yet',
+        description: 'd',
+      }),
     );
     expect(small).toContain('compact');
   });

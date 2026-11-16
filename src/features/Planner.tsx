@@ -142,7 +142,10 @@ export function Planner() {
           >
             {scenarios.length ? (
               <ComparisonChart
-                data={scenarios.map((s) => ({ name: s.name, value: s.result.expected_outcome || 0 }))}
+                data={scenarios.map((s) => ({
+                  name: s.name,
+                  value: s.result.expected_outcome || 0,
+                }))}
               />
             ) : (
               // An empty chart drew axes with no bars, which looks like a result of zero.

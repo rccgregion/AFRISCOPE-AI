@@ -72,8 +72,12 @@ export function Operations() {
   const stockCounts = summary?.inventory_latest ?? { sample: 0, real: 0 };
   const alertCounts = summary?.operational_alerts ?? { sample: 0, real: 0 };
   const fundingCounts = summary?.funding_releases ?? { sample: 0, real: 0 };
-  const scopedAlerts = (data?.operational_alerts || []).filter((a) => matchesScope(a.data_origin, origin));
-  const scopedFunding = (data?.funding_releases || []).filter((r) => matchesScope(r.data_origin, origin));
+  const scopedAlerts = (data?.operational_alerts || []).filter((a) =>
+    matchesScope(a.data_origin, origin),
+  );
+  const scopedFunding = (data?.funding_releases || []).filter((r) =>
+    matchesScope(r.data_origin, origin),
+  );
   useEffect(() => {
     if (!project) return;
     let active = true;
@@ -132,7 +136,10 @@ export function Operations() {
         <Button
           variant="secondary"
           onClick={() =>
-            exportCSV('afriscope-operational-alerts.csv', exportLabelRows(data?.operational_alerts || []))
+            exportCSV(
+              'afriscope-operational-alerts.csv',
+              exportLabelRows(data?.operational_alerts || []),
+            )
           }
         >
           <Download size={16} />
@@ -150,9 +157,7 @@ export function Operations() {
         <span className="as-of-sep">·</span>
         <span>{data?.data_state || 'Data state unknown'}</span>
         <span className="as-of-sep">·</span>
-        <span>
-          Reference date is configurable in Administration → rule configuration
-        </span>
+        <span>Reference date is configurable in Administration → rule configuration</span>
       </p>
       <Tabs items={tabs} value={tab} onChange={(t) => setParams({ tab: t })} />
       {tab === 'Medicine supply' && (
@@ -372,15 +377,18 @@ export function Operations() {
       {tab === 'GIS district map' && (
         <div className="space-y-4">
           <Notice>
-            District boundary GIS layers projected from GeoJSON topology. Facilities display real-time
-            stock risk indicators, transfer corridors, and supply levels.
+            District boundary GIS layers projected from GeoJSON topology. Facilities display
+            real-time stock risk indicators, transfer corridors, and supply levels.
           </Notice>
           <GisMap
             facilities={data?.facilities || []}
             stockRecords={stock || []}
             onSelectFacility={(facExtId) => {
               const matchedStock = (stock || []).find(
-                (s) => s.facility_external_id === facExtId || s.external_id === facExtId || s.facility_id === facExtId,
+                (s) =>
+                  s.facility_external_id === facExtId ||
+                  s.external_id === facExtId ||
+                  s.facility_id === facExtId,
               );
               if (matchedStock) {
                 setSelected(matchedStock);
@@ -405,7 +413,11 @@ export function Operations() {
                     currency,
                   )}
                 </strong>
-                <small>{o === 'sample' ? 'Sample data - not reported by any facility' : 'Imported real data'}</small>
+                <small>
+                  {o === 'sample'
+                    ? 'Sample data - not reported by any facility'
+                    : 'Imported real data'}
+                </small>
               </div>
             ))}
           </div>
@@ -557,55 +569,63 @@ export function Operations() {
       )}
       {tab === 'Alerts' && (
         <>
-        <OriginFilter value={origin} onChange={setOrigin} counts={alertCounts} />
-        <Panel
-          title="Operational alert queue"
-          subtitle="Every signal includes its trigger, source record, owner, and next action."
-          action={
-            <Button variant="secondary" onClick={() => setDraft(true)} disabled={!allow('manage')}>
-              <Plus size={15} />
-              Draft response
-            </Button>
-          }
-        >
-          <Table
-            rows={scopedAlerts}
-            label="Operational alerts"
-            columns={[
-              {
-                key: 'title',
-                label: 'Alert / triggering condition',
-                render: (r) => (
-                  <div className="cell-stack">
-                    <strong>{r.title}</strong>
-                    <span>{r.triggering_condition}</span>
-                  </div>
-                ),
-              },
-              { key: 'severity', label: 'Severity', render: (r) => <Status value={r.severity} /> },
-              { key: 'category', label: 'Category' },
-              {
-                key: 'owner_id',
-                label: 'Owner',
-                render: (r) =>
-                  data?.members.find((m) => m.user_id === r.owner_id)?.full_name || 'Unassigned',
-              },
-              { key: 'status', label: 'Status', render: (r) => <Status value={r.status} /> },
-              {
-                key: 'data_origin',
-                label: 'Origin',
-                render: (r) =>
-                  r.data_origin === 'sample' ? (
-                    <OriginBadge origin="sample" />
-                  ) : (
-                    <Badge tone="green">Real</Badge>
+          <OriginFilter value={origin} onChange={setOrigin} counts={alertCounts} />
+          <Panel
+            title="Operational alert queue"
+            subtitle="Every signal includes its trigger, source record, owner, and next action."
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => setDraft(true)}
+                disabled={!allow('manage')}
+              >
+                <Plus size={15} />
+                Draft response
+              </Button>
+            }
+          >
+            <Table
+              rows={scopedAlerts}
+              label="Operational alerts"
+              columns={[
+                {
+                  key: 'title',
+                  label: 'Alert / triggering condition',
+                  render: (r) => (
+                    <div className="cell-stack">
+                      <strong>{r.title}</strong>
+                      <span>{r.triggering_condition}</span>
+                    </div>
                   ),
-              },
-            ]}
-            onRowClick={setAlert}
-          />
-          {!scopedAlerts.length && <NoDataYet what="operational alerts" />}
-        </Panel>
+                },
+                {
+                  key: 'severity',
+                  label: 'Severity',
+                  render: (r) => <Status value={r.severity} />,
+                },
+                { key: 'category', label: 'Category' },
+                {
+                  key: 'owner_id',
+                  label: 'Owner',
+                  render: (r) =>
+                    data?.members.find((m) => m.user_id === r.owner_id)?.full_name || 'Unassigned',
+                },
+                { key: 'status', label: 'Status', render: (r) => <Status value={r.status} /> },
+                {
+                  key: 'data_origin',
+                  label: 'Origin',
+                  render: (r) =>
+                    r.data_origin === 'sample' ? (
+                      <OriginBadge origin="sample" />
+                    ) : (
+                      <Badge tone="green">Real</Badge>
+                    ),
+                },
+              ]}
+              onRowClick={setAlert}
+            />
+            {!scopedAlerts.length && <NoDataYet what="operational alerts" />}
+          </Panel>
         </>
       )}
       {tab === 'Actions & milestones' && (

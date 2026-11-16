@@ -169,9 +169,7 @@ export function PromptLibrary() {
                             download(
                               `prompt-${result.prompt_id}-${result.scope}.md`,
                               [
-                                result.uses_sample_data
-                                  ? `> ${SAMPLE_BADGE_TEXT}\n`
-                                  : '',
+                                result.uses_sample_data ? `> ${SAMPLE_BADGE_TEXT}\n` : '',
                                 `# ${result.prompt_title}`,
                                 result.scope_statement,
                                 '',
@@ -224,8 +222,8 @@ function UnverifiedNote({ claims }: { claims: string[] }) {
       <div className="unverified-body">
         <p>
           This prompt contains {claims.length === 1 ? 'a statement' : 'statements'} about the
-          external world that this build has not checked against a source. If an answer repeats
-          {' '}it, treat it as something to confirm — not as a finding.
+          external world that this build has not checked against a source. If an answer repeats it,
+          treat it as something to confirm — not as a finding.
         </p>
         <ul>
           {claims.map((c) => (
@@ -233,8 +231,8 @@ function UnverifiedNote({ claims }: { claims: string[] }) {
           ))}
         </ul>
         <p className="muted">
-          The full list, with sources to check and their status, is kept in the project
-          repository at <code>docs/content-claims.md</code>.
+          The full list, with sources to check and their status, is kept in the project repository
+          at <code>docs/content-claims.md</code>.
         </p>
       </div>
     </details>

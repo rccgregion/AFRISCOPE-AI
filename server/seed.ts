@@ -189,16 +189,16 @@ export async function seedDemo(db: Database, reset = false, sampleOnlyDeletes = 
           'user_profiles',
           {
             id: demoUserId(role),
-          email: `demo.${role}@afriscope.example`,
-          full_name: {
-            platform_admin: 'Alex · Platform administrator',
-            organisation_admin: 'Amara · Organisation admin',
-            programme_manager: 'Amina · Programme manager',
-            data_analyst: 'Daniel · Data analyst',
-            operator: 'Grace · Facility operator',
-            reviewer: 'Joseph · Independent reviewer',
-            executive: 'Sam · Executive observer',
-          }[role],
+            email: `demo.${role}@afriscope.example`,
+            full_name: {
+              platform_admin: 'Alex · Platform administrator',
+              organisation_admin: 'Amara · Organisation admin',
+              programme_manager: 'Amina · Programme manager',
+              data_analyst: 'Daniel · Data analyst',
+              operator: 'Grace · Facility operator',
+              reviewer: 'Joseph · Independent reviewer',
+              executive: 'Sam · Executive observer',
+            }[role],
             password_hash: null,
             is_platform_admin: false,
           },
@@ -270,11 +270,17 @@ export async function seedDemo(db: Database, reset = false, sampleOnlyDeletes = 
       productIds = new Map<string, string>();
     {
       for (const f of rows('facilities')) {
-        const r = await insertOnce(c, 'facilities', { ...base(med), ...f }, ['project_id', 'external_id']);
+        const r = await insertOnce(c, 'facilities', { ...base(med), ...f }, [
+          'project_id',
+          'external_id',
+        ]);
         facilityIds.set(f.external_id, String(r.id));
       }
       for (const p of rows('medicine_products')) {
-        const r = await insertOnce(c, 'medicine_products', { ...base(med), ...p }, ['project_id', 'external_id']);
+        const r = await insertOnce(c, 'medicine_products', { ...base(med), ...p }, [
+          'project_id',
+          'external_id',
+        ]);
         productIds.set(p.external_id, String(r.id));
       }
       const optionIds = new Map<string, string>();
@@ -634,35 +640,35 @@ export async function seedDemo(db: Database, reset = false, sampleOnlyDeletes = 
  * sample-derived content.
  */
 const SAMPLE_ORIGIN_TABLES = [
-    'projects',
-    'datasets',
-    'dataset_versions',
-    'data_quality_results',
-    'facilities',
-    'medicine_products',
-    'inventory_records',
-    'consumption_records',
-    'funding_releases',
-    'expenditure_records',
-    'budgets',
-    'procurement_events',
-    'deliveries',
-    'operational_alerts',
-    'recommendations',
-    'recommendation_evidence',
-    'evidence_records',
-    'optimisation_scenarios',
-    'intervention_options',
-    'analytical_runs',
-    'experiments',
-    'experiment_runs',
-    'experiment_results',
-    'problem_briefs',
-    'stakeholders',
-    'risk_assessments',
-    'milestones',
-    'action_items',
-  ];
+  'projects',
+  'datasets',
+  'dataset_versions',
+  'data_quality_results',
+  'facilities',
+  'medicine_products',
+  'inventory_records',
+  'consumption_records',
+  'funding_releases',
+  'expenditure_records',
+  'budgets',
+  'procurement_events',
+  'deliveries',
+  'operational_alerts',
+  'recommendations',
+  'recommendation_evidence',
+  'evidence_records',
+  'optimisation_scenarios',
+  'intervention_options',
+  'analytical_runs',
+  'experiments',
+  'experiment_runs',
+  'experiment_results',
+  'problem_briefs',
+  'stakeholders',
+  'risk_assessments',
+  'milestones',
+  'action_items',
+];
 const SAMPLE_ORIGIN_SET = new Set<string>(SAMPLE_ORIGIN_TABLES);
 
 export async function markDemoRowsAsSample(db: Database) {
@@ -766,10 +772,10 @@ export async function ensureUser(
     ]);
 
     const existing = (
-      await c.query(
-        'select id from user_profiles where lower(username)=$1 or lower(email)=$2',
-        [normalizedUsername, normalizedEmail],
-      )
+      await c.query('select id from user_profiles where lower(username)=$1 or lower(email)=$2', [
+        normalizedUsername,
+        normalizedEmail,
+      ])
     ).rows[0];
 
     let userId: string;
@@ -810,10 +816,10 @@ export async function ensureUser(
     const projects = (await c.query('select id from projects')).rows;
     for (const p of projects) {
       const pm = (
-        await c.query(
-          'select id from project_memberships where project_id=$1 and user_id=$2',
-          [p.id, userId],
-        )
+        await c.query('select id from project_memberships where project_id=$1 and user_id=$2', [
+          p.id,
+          userId,
+        ])
       ).rows[0];
       if (!pm) {
         await insert(c, 'project_memberships', {

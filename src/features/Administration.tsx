@@ -1,13 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Building2,
-  Plus,
-  ArrowRight,
-  RefreshCw,
-  Copy,
-  Mail,
-} from 'lucide-react';
+import { Building2, Plus, ArrowRight, RefreshCw, Copy, Mail } from 'lucide-react';
 import { useStore, useAction, type Row } from '../lib/store';
 import { api } from '../lib/api';
 import {
@@ -423,8 +416,8 @@ export function SettingsPage() {
     [webhookBusy, setWebhookBusy] = useState(false);
   const databaseInfo = (health?.database_info as Row | undefined) || null;
   const preferences =
-    ((workspace?.user as Row | undefined)?.preferences as { in_app_alerts?: boolean } | undefined) ||
-    {};
+    ((workspace?.user as Row | undefined)?.preferences as
+      { in_app_alerts?: boolean } | undefined) || {};
 
   const loadBackups = useCallback(() => {
     api<{ backups: Row[] }>('/backups')
@@ -594,7 +587,12 @@ export function SettingsPage() {
               API: health?.status === 'ok' ? 'Connected' : 'Unavailable',
               // Name the database actually in use, not a generic label (5.5).
               Database: health?.database || 'Checking…',
-              'Database driver': databaseInfo?.driver === 'pglite' ? 'PGlite (embedded Postgres)' : databaseInfo?.driver === 'postgres' ? 'PostgreSQL (networked)' : 'Checking…',
+              'Database driver':
+                databaseInfo?.driver === 'pglite'
+                  ? 'PGlite (embedded Postgres)'
+                  : databaseInfo?.driver === 'postgres'
+                    ? 'PostgreSQL (networked)'
+                    : 'Checking…',
               'Data persistence': databaseInfo
                 ? databaseInfo.ephemeral
                   ? 'Ephemeral — nothing survives a restart'
@@ -607,8 +605,8 @@ export function SettingsPage() {
             }}
           />
           <p className="p-5 muted small">
-            Host, port and database name are reported; user names, passwords and connection
-            strings are never sent to the browser.
+            Host, port and database name are reported; user names, passwords and connection strings
+            are never sent to the browser.
           </p>
           <div className="p-5">
             <Badge tone="green">No external credentials required for local mode</Badge>

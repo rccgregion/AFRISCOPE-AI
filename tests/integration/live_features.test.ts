@@ -58,7 +58,9 @@ describe('Live Data, Automated Backups, Supabase Webhooks, and GIS layers', () =
     // List backups
     const listRes = await agent.get(path('/backups')).expect(200);
     expect(listRes.body.backups.length).toBeGreaterThan(0);
-    const created = listRes.body.backups.find((b: { filename: string }) => b.filename === createRes.body.filename);
+    const created = listRes.body.backups.find(
+      (b: { filename: string }) => b.filename === createRes.body.filename,
+    );
     expect(created).toBeDefined();
     expect(created.backup_type).toBe('manual');
 

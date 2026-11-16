@@ -1,4 +1,11 @@
-import { mkdirSync, writeFileSync, readFileSync, readdirSync, unlinkSync, existsSync } from 'node:fs';
+import {
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  readdirSync,
+  unlinkSync,
+  existsSync,
+} from 'node:fs';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { Database } from './db.js';
@@ -38,7 +45,9 @@ export class BackupService {
     this.intervalHours = intervalHours;
     if (this.timer) clearInterval(this.timer);
 
-    console.log(`[BackupService] Automated recurring backups scheduled every ${intervalHours} hours.`);
+    console.log(
+      `[BackupService] Automated recurring backups scheduled every ${intervalHours} hours.`,
+    );
     // Run an automated backup after 1 minute, then every interval
     setTimeout(() => {
       void this.createBackup(db, undefined, undefined, 'automated_hourly').catch((err) =>
@@ -246,7 +255,9 @@ export class BackupService {
     const fullPath = resolve(BACKUP_DIR, safeName);
     if (existsSync(fullPath)) return readFileSync(fullPath);
     const row = await db.admin(async (c) => {
-      const res = await c.query('select payload from backups where filename=$1 limit 1', [safeName]);
+      const res = await c.query('select payload from backups where filename=$1 limit 1', [
+        safeName,
+      ]);
       return res.rows[0];
     });
     if (!row || row.payload == null) throw new Error('Backup snapshot was not found');
@@ -273,7 +284,9 @@ export class BackupService {
         `select backup_type, status, created_at from backups
           where backup_type like 'automated%' order by created_at desc limit 1`,
       );
-      const latest = await c.query('select created_at from backups order by created_at desc limit 1');
+      const latest = await c.query(
+        'select created_at from backups order by created_at desc limit 1',
+      );
       return { automatic: res.rows[0], latest: latest.rows[0] };
     });
     const serverless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;

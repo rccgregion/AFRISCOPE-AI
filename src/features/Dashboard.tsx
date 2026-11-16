@@ -668,7 +668,9 @@ export function Dashboard() {
                           {r.expected_benefit || 'Programme risk mitigation'}
                         </span>
                         <span className="priority-cell-sub">
-                          {r.evidence_count ? `${r.evidence_count} evidence records` : 'Documented basis'}
+                          {r.evidence_count
+                            ? `${r.evidence_count} evidence records`
+                            : 'Documented basis'}
                         </span>
                       </div>
                       <Status value={r.state} />
@@ -751,7 +753,9 @@ export function Dashboard() {
                       <span className="priority-cell-sub">{d.domain_area}</span>
                     </div>
                     <div className="priority-cell">
-                      <span className="priority-cell-title">Version {d.current_version || '1.0'}</span>
+                      <span className="priority-cell-title">
+                        Version {d.current_version || '1.0'}
+                      </span>
                       <span className="priority-cell-sub">
                         {d.record_count ? `${number(d.record_count)} rows` : 'Active stream'}
                       </span>
@@ -921,7 +925,9 @@ export function Dashboard() {
               </div>
               <div className="panel-foot">
                 <ShieldCheck size={14} />
-                <span>All recommendations require explicit evidence lineage for sovereign trust.</span>
+                <span>
+                  All recommendations require explicit evidence lineage for sovereign trust.
+                </span>
                 <Link to="/governance">
                   Governance standards <ArrowUpRight size={12} />
                 </Link>
@@ -1174,7 +1180,9 @@ export function Dashboard() {
                     <p>{a.triggering_condition}</p>
                     <small>{a.category}</small>
                     {a.data_origin === 'sample' && (
-                      <small className="sample-inline">Sample data - not reported by any facility</small>
+                      <small className="sample-inline">
+                        Sample data - not reported by any facility
+                      </small>
                     )}
                   </div>
                 </Link>

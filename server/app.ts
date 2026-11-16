@@ -5,7 +5,14 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { z } from 'zod';
-import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain.js';
+import {
+  can,
+  ROLES,
+  DEMO_ORG,
+  AS_OF,
+  type Role,
+  type RecommendationState,
+} from '../shared/domain.js';
 import { transition, optimise, type Constraints } from '../shared/analytics.js';
 import { tables } from './schema.mjs';
 import { audit, one, type Database, type Client } from './db.js';
@@ -147,10 +154,9 @@ export function createApp(db: Database) {
     if (typeof raw !== 'string' || !raw || raw.length > 100) return null;
     const record = (
       await db.admin((c) =>
-        c.query(
-          'select user_id from auth_sessions where token_hash=$1 and expires_at>now()',
-          [hash(raw)],
-        ),
+        c.query('select user_id from auth_sessions where token_hash=$1 and expires_at>now()', [
+          hash(raw),
+        ]),
       )
     ).rows[0];
     return record ? String(record.user_id) : null;
@@ -178,9 +184,7 @@ export function createApp(db: Database) {
     const windowMs = 60_000;
     const recent = (authAttempts.get(ip) || []).filter((t) => now - t < windowMs);
     if (recent.length >= 10) {
-      res
-        .status(429)
-        .json({ error: 'Too many authentication attempts. Try again in a minute.' });
+      res.status(429).json({ error: 'Too many authentication attempts. Try again in a minute.' });
       return;
     }
     recent.push(now);
@@ -670,9 +674,10 @@ export function createApp(db: Database) {
       // Operational reference date ("data as of"), configurable per project in
       // Administration -> rule configuration (settings.as_of).
       output.reference_date = String(
-        ((output.project as Record<string, unknown> | undefined)?.settings as
-          | Record<string, unknown>
-          | undefined)?.as_of || AS_OF,
+        (
+          (output.project as Record<string, unknown> | undefined)?.settings as
+            Record<string, unknown> | undefined
+        )?.as_of || AS_OF,
       ).slice(0, 10);
       output.my_role = (await one(c, 'select project_role($1) as role', [id])).role;
       output.members = (
@@ -2102,25 +2107,32 @@ export function createApp(db: Database) {
 
   // Templates are static skeletons with placeholder values only, so they are
   // served without a session: a plain <a download> link must work.
-  route('get', '/import-templates/:kind', async (req, res) => {
-    const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
-    const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
-    if (format === 'json') {
-      res.json({ kind, fields: DATA_DICTIONARY[kind] });
-      return;
-    }
-    const csv = kind === 'facilities' ? facilityTemplateCsv() : stockTemplateCsv();
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
-    res.send(csv);
-  }, false);
+  route(
+    'get',
+    '/import-templates/:kind',
+    async (req, res) => {
+      const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
+      const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
+      if (format === 'json') {
+        res.json({ kind, fields: DATA_DICTIONARY[kind] });
+        return;
+      }
+      const csv = kind === 'facilities' ? facilityTemplateCsv() : stockTemplateCsv();
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
+      res.send(csv);
+    },
+    false,
+  );
 
   route('get', '/projects/:id/sample-data/dry-run', async (req, res) => {
     const id = uuid.parse(req.params.id);
     await permission(req, 'manage', id);
     if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
     const org = await scoped(req, async (c) =>
-      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+      String(
+        (await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id,
+      ),
     );
     const admin = await isOrgAdmin(req, org);
     if (!admin) throw httpError(403, 'Administrator role required');
@@ -2133,7 +2145,9 @@ export function createApp(db: Database) {
     await permission(req, 'manage', id);
     if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
     const org = await scoped(req, async (c) =>
-      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+      String(
+        (await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id,
+      ),
     );
     if (!(await isOrgAdmin(req, org))) throw httpError(403, 'Administrator role required');
     const body = z
@@ -2189,8 +2203,8 @@ export function createApp(db: Database) {
     if (!body.facilities_csv && !body.stock_csv)
       throw httpError(400, 'Provide facilities_csv and/or stock_csv');
     const existing = await scoped(req, async (c) =>
-      (await c.query('select external_id from facilities where project_id=$1', [id])).rows.map((r) =>
-        String(r.external_id),
+      (await c.query('select external_id from facilities where project_id=$1', [id])).rows.map(
+        (r) => String(r.external_id),
       ),
     );
     const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
@@ -2236,8 +2250,9 @@ export function createApp(db: Database) {
 
     const outcome = await scoped(req, async (c) => {
       const { org, actor } = await context(c, id);
-      const existing = (await c.query('select external_id from facilities where project_id=$1', [id]))
-        .rows.map((r) => String(r.external_id));
+      const existing = (
+        await c.query('select external_id from facilities where project_id=$1', [id])
+      ).rows.map((r) => String(r.external_id));
       const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
       const knownIds = new Set([
         ...existing,
@@ -2298,10 +2313,20 @@ export function createApp(db: Database) {
         stock: stock?.accepted ?? [],
         duplicatePolicy: body.duplicate_policy as DuplicatePolicy,
       });
-      await audit(c, org, id, actor, 'real_import.committed', 'data_import_batches', String(batch.id), null, {
-        ...written,
-        rejections: rejections.length,
-      });
+      await audit(
+        c,
+        org,
+        id,
+        actor,
+        'real_import.committed',
+        'data_import_batches',
+        String(batch.id),
+        null,
+        {
+          ...written,
+          rejections: rejections.length,
+        },
+      );
       return { committed: true, rejections, written, batch_id: String(batch.id) };
     });
     res.status(outcome.committed ? 201 : 422).json(outcome);
@@ -2318,13 +2343,16 @@ export function createApp(db: Database) {
     // Permission check first, in the caller's scoped session (one connection per
     // request, so the service-level step must not nest inside it).
     const target = await scoped(req, async (c) => {
-      const batch = await one(c, 'select project_id from data_import_batches where id=$1', [batchId]);
+      const batch = await one(c, 'select project_id from data_import_batches where id=$1', [
+        batchId,
+      ]);
       const projectId = String(batch.project_id);
       const roleRow = await one(c, 'select project_role($1) as role', [projectId]);
       if (!can(roleRow.role as Role, 'manage'))
         throw httpError(403, 'Your project role does not permit undoing this import');
       const org = String(
-        (await one(c, 'select organisation_id from projects where id=$1', [projectId])).organisation_id,
+        (await one(c, 'select organisation_id from projects where id=$1', [projectId]))
+          .organisation_id,
       );
       return { projectId, org };
     });
@@ -2347,10 +2375,20 @@ export function createApp(db: Database) {
         );
         await tx.query('update data_import_batches set undone_at=now() where id=$1', [batchId]);
         const actor = (req as Authed).user.id;
-        await audit(tx, org, projectId, actor, 'real_import.undone', 'data_import_batches', batchId, null, {
-          stock_removed: stock.affectedRows ?? 0,
-          facilities_removed: facilities.affectedRows ?? 0,
-        });
+        await audit(
+          tx,
+          org,
+          projectId,
+          actor,
+          'real_import.undone',
+          'data_import_batches',
+          batchId,
+          null,
+          {
+            stock_removed: stock.affectedRows ?? 0,
+            facilities_removed: facilities.affectedRows ?? 0,
+          },
+        );
         return {
           undone: true,
           stock_removed: stock.affectedRows ?? 0,
@@ -2472,7 +2510,17 @@ export function createApp(db: Database) {
           : [],
         duplicatePolicy: 'reject',
       });
-      await audit(c, org, id, actor, 'real_import.manual_entry', 'data_import_batches', String(batch.id), null, written);
+      await audit(
+        c,
+        org,
+        id,
+        actor,
+        'real_import.manual_entry',
+        'data_import_batches',
+        String(batch.id),
+        null,
+        written,
+      );
       return { ...written, batch_id: String(batch.id) };
     });
     res.status(201).json(result);
@@ -2560,9 +2608,10 @@ export function createApp(db: Database) {
       db,
       id,
       connectorId,
-      Object.fromEntries(
-        Object.entries(input).filter(([, v]) => v !== null && v !== ''),
-      ) as Record<string, string>,
+      Object.fromEntries(Object.entries(input).filter(([, v]) => v !== null && v !== '')) as Record<
+        string,
+        string
+      >,
     );
     res.json(result);
   });
