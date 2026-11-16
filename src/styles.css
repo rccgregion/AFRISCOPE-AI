@@ -32,7 +32,7 @@
   --deep: #0b2e23;
   --deep-surface: #123f31;
   --muted: #4e6557;
-  --muted-light: #71887b;
+  --muted-light: #5f7266; /* >= 4.5:1 on white, canvas and mint surfaces */
   --border: #e2e8e2;
   --border-subtle: #edf2ed;
   --canvas: #f7f5ef;
@@ -699,7 +699,7 @@ summary {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #7d9e8e;
+  color: #4e6557;
 }
 
 .connection-dot,
@@ -4218,9 +4218,10 @@ td strong {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.sample-inline {
+.sample-inline,
+.radar-list small.sample-inline {
   display: block;
-  color: var(--amber);
+  color: #7a4600;
   font-weight: 600;
 }
 .sample-ribbon {
