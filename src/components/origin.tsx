@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Papa from 'papaparse';
 import { Link } from 'react-router-dom';
 import { Badge, Button, Notice, Panel } from './ui';
 import { api } from '../lib/api';
@@ -318,6 +319,73 @@ type DryRun = {
   confirmation_phrase: string;
 };
 
+export const FACILITY_TARGETS = [
+  'facility_id',
+  'facility_name',
+  'country',
+  'state_or_region',
+  'district_or_lga',
+  'facility_type',
+  'catchment_population',
+  'lat',
+  'lon',
+  'source',
+] as const;
+
+export const STOCK_TARGETS = [
+  'facility_id',
+  'medicine',
+  'usable_stock_units',
+  'avg_daily_consumption',
+  'as_of_date',
+  'financing_signal',
+  'reporting_period',
+  'source',
+] as const;
+
+const REQUIRED = new Set([
+  'facility_id',
+  'facility_name',
+  'medicine',
+  'usable_stock_units',
+  'avg_daily_consumption',
+  'as_of_date',
+  'source',
+]);
+const requiredTargets = (targets: readonly string[]) => targets.filter((t) => REQUIRED.has(t));
+
+/** Split a CSV into header + rows without trusting the number of columns. */
+function parseCsv(text: string) {
+  const parsed = Papa.parse<Record<string, string>>(text.trim(), {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return { headers: (parsed.meta.fields || []).filter(Boolean), rows: parsed.data };
+}
+
+const normalise = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Auto-match uploaded headers to the canonical fields (editable afterwards). */
+export function autoMap(headers: string[], targets: readonly string[]) {
+  const map: Record<string, string> = {};
+  for (const t of targets) {
+    const hit = headers.find((h) => normalise(h) === normalise(t));
+    map[t] = hit ?? '';
+  }
+  return map;
+}
+
+/** Rewrite the CSV so its headers are exactly the canonical field names. */
+export function applyMapping(text: string, targets: readonly string[], map: Record<string, string>) {
+  const { rows } = parseCsv(text);
+  const out = rows.map((r) => {
+    const next: Record<string, string> = {};
+    for (const t of targets) next[t] = map[t] ? (r[map[t]] ?? '') : '';
+    return next;
+  });
+  return Papa.unparse(out, { columns: [...targets] });
+}
+
 type Preview = {
   facilities: { accepted: number; rejections: { row: number; reason: string }[]; warnings: { row: number; reason: string }[] } | null;
   stock: { accepted: number; rejections: { row: number; reason: string }[]; warnings: { row: number; reason: string }[] } | null;
@@ -326,25 +394,52 @@ type Preview = {
 /** Upload → map → validate → preview → commit. Nothing is written before commit. */
 export function RealImportWizard({ onDone }: { onDone?: () => void }) {
   const { project, notify, refresh } = useStore();
-  const [facilitiesCsv, setFacilitiesCsv] = useState('');
-  const [stockCsv, setStockCsv] = useState('');
   const [facilityName, setFacilityName] = useState('');
   const [stockName, setStockName] = useState('');
   const [policy, setPolicy] = useState<'reject' | 'skip' | 'update'>('reject');
+  const [facilityRaw, setFacilityRaw] = useState('');
+  const [stockRaw, setStockRaw] = useState('');
+  const [facilityMap, setFacilityMap] = useState<Record<string, string>>({});
+  const [stockMap, setStockMap] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState('');
   const [result, setResult] = useState<string>('');
 
+  const facilityHeaders = useMemo(
+    () => (facilityRaw ? parseCsv(facilityRaw).headers : []),
+    [facilityRaw],
+  );
+  const stockHeaders = useMemo(() => (stockRaw ? parseCsv(stockRaw).headers : []), [stockRaw]);
+
   if (!project) return null;
-  const readFile = async (file: File, set: (v: string) => void, name: (v: string) => void) => {
+  const readFile = async (
+    file: File,
+    kind: 'facilities' | 'stock',
+  ) => {
     if (!/\.csv$/i.test(file.name)) {
       notify('Upload a .csv file. XLSX templates download as CSV-compatible sheets.', true);
       return;
     }
-    set(await file.text());
-    name(file.name);
+    const text = await file.text();
+    const headers = parseCsv(text).headers;
+    if (kind === 'facilities') {
+      setFacilityRaw(text);
+      setFacilityName(file.name);
+      setFacilityMap(autoMap(headers, FACILITY_TARGETS));
+    } else {
+      setStockRaw(text);
+      setStockName(file.name);
+      setStockMap(autoMap(headers, STOCK_TARGETS));
+    }
     setPreview(null);
+    setResult('');
   };
+
+  const facilityCsv = facilityRaw ? applyMapping(facilityRaw, FACILITY_TARGETS, facilityMap) : '';
+  const stockCsv = stockRaw ? applyMapping(stockRaw, STOCK_TARGETS, stockMap) : '';
+
+  const unmapped = (targets: readonly string[], map: Record<string, string>) =>
+    requiredTargets(targets).filter((t) => !map[t]);
 
   const validate = async () => {
     setBusy('preview');
@@ -352,7 +447,7 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
       setPreview(
         await api<Preview>(`/projects/${project.id}/real-import/preview`, {
           body: {
-            facilities_csv: facilitiesCsv || undefined,
+            facilities_csv: facilityCsv || undefined,
             stock_csv: stockCsv || undefined,
           },
         }),
@@ -372,7 +467,7 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
         rejections: { row: number; reason: string }[];
       }>(`/projects/${project.id}/real-import/commit`, {
         body: {
-          facilities_csv: facilitiesCsv || undefined,
+          facilities_csv: facilityCsv || undefined,
           stock_csv: stockCsv || undefined,
           duplicate_policy: policy,
           file_name: [facilityName, stockName].filter(Boolean).join(' + ') || 'real import',
@@ -423,7 +518,7 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
           <input
             type="file"
             accept=".csv"
-            onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], setFacilitiesCsv, setFacilityName)}
+            onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], 'facilities')}
           />
           <small>{facilityName || 'facility_id, facility_name, country, …, source (required)'}</small>
         </label>
@@ -432,11 +527,53 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
           <input
             type="file"
             accept=".csv"
-            onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], setStockCsv, setStockName)}
+            onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], 'stock')}
           />
           <small>{stockName || 'facility_id, medicine, usable_stock_units, …, source (required)'}</small>
         </label>
       </div>
+      {(facilityHeaders.length > 0 || stockHeaders.length > 0) && (
+        <div className="mapping-grid">
+          {facilityHeaders.length > 0 && (
+            <Panel
+              title="Map facility columns"
+              subtitle="Auto-matched from the file headers. Change any column before validating."
+            >
+              <MappingFields
+                targets={FACILITY_TARGETS}
+                headers={facilityHeaders}
+                map={facilityMap}
+                onChange={setFacilityMap}
+              />
+              {unmapped(FACILITY_TARGETS, facilityMap).length > 0 && (
+                <Notice tone="warning">
+                  Unmapped required field(s): {unmapped(FACILITY_TARGETS, facilityMap).join(', ')}.
+                  Every row will be rejected until these are mapped.
+                </Notice>
+              )}
+            </Panel>
+          )}
+          {stockHeaders.length > 0 && (
+            <Panel
+              title="Map stock columns"
+              subtitle="Auto-matched from the file headers. Change any column before validating."
+            >
+              <MappingFields
+                targets={STOCK_TARGETS}
+                headers={stockHeaders}
+                map={stockMap}
+                onChange={setStockMap}
+              />
+              {unmapped(STOCK_TARGETS, stockMap).length > 0 && (
+                <Notice tone="warning">
+                  Unmapped required field(s): {unmapped(STOCK_TARGETS, stockMap).join(', ')}. Every
+                  row will be rejected until these are mapped.
+                </Notice>
+              )}
+            </Panel>
+          )}
+        </div>
+      )}
       <label className="form-field">
         <span>If a facility+medicine+date already exists</span>
         <select value={policy} onChange={(e) => setPolicy(e.target.value as typeof policy)}>
@@ -446,7 +583,12 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
         </select>
       </label>
       <div className="inline-actions">
-        <Button variant="secondary" busy={busy === 'preview'} disabled={!facilitiesCsv && !stockCsv} onClick={validate}>
+        <Button
+          variant="secondary"
+          busy={busy === 'preview'}
+          disabled={!facilityCsv && !stockCsv}
+          onClick={validate}
+        >
           Validate and preview
         </Button>
         <Button
@@ -497,5 +639,43 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
       )}
       {result && <Notice>{result}</Notice>}
     </Panel>
+  );
+}
+
+function MappingFields({
+  targets,
+  headers,
+  map,
+  onChange,
+}: {
+  targets: readonly string[];
+  headers: string[];
+  map: Record<string, string>;
+  onChange: (next: Record<string, string>) => void;
+}) {
+  const required = requiredTargets(targets);
+  return (
+    <div className="mapping-fields">
+      {targets.map((t) => (
+        <label key={t} className="mapping-row">
+          <span>
+            {t}
+            {required.includes(t as never) ? ' *' : ''}
+          </span>
+          <select
+            aria-label={`Map ${t}`}
+            value={map[t] ?? ''}
+            onChange={(e) => onChange({ ...map, [t]: e.target.value })}
+          >
+            <option value="">— not mapped —</option>
+            {headers.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </div>
   );
 }
