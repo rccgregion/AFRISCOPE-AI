@@ -87,7 +87,7 @@ Details and limitations: [MODEL_EVALUATION](docs/MODEL_EVALUATION.md), [AI_EVALU
 
 ## Data, migrations, and reset
 
-Seven forward migrations live in `supabase/migrations/`; the database applies them automatically on startup. `npm run db:migrate` applies them explicitly. `npm run db:seed` seeds the demo, or bootstraps a private admin when `ADMIN_PASSWORD` and `ADMIN_USERNAME` or `ADMIN_EMAIL` are supplied. Sign-in accepts a username or email plus password. `npm run data:generate` regenerates 12 fixed-seed CSVs (seed 20260930).
+Nine forward migrations live in `supabase/migrations/`; the database applies them automatically on startup. `npm run db:migrate` applies them explicitly. `npm run db:seed` seeds the demo, or bootstraps a private admin when `ADMIN_PASSWORD` and `ADMIN_USERNAME` or `ADMIN_EMAIL` are supplied. Sign-in accepts a username or email plus password. `npm run data:generate` regenerates 12 fixed-seed CSVs (seed 20260930).
 
 Reset only the synthetic organisation:
 
@@ -100,6 +100,67 @@ In Settings, a demo organisation administrator can type `RESET`. For CLI reset, 
 ## Vercel
 
 See [docs/VERCEL.md](docs/VERCEL.md). Vercel requires an external PostgreSQL database (`DATABASE_URL` or `POSTGRES_URL`); PGlite local disk is not supported in serverless functions. Supabase is supported via its Postgres connection string (`DATABASE_URL` / `SUPABASE_DATABASE_URL`) plus `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` for the Supabase API integration.
+
+### Supabase: required one-time database setup
+
+Row-level security is enforced by switching the session to an unprivileged
+`afri_app` role (`server/db.ts` → `scoped()`), because the connecting Supabase
+user owns the tables and therefore bypasses RLS. That switch only works if the
+connecting user is a **member** of `afri_app`.
+
+Migration `supabase/migrations/009_afri_app_role_grants.sql` does this
+automatically on the next boot (it is idempotent). If you cannot run
+migrations, or you use a different connecting role, create the grant once in
+the Supabase SQL editor **as the role in `DATABASE_URL`**:
+
+```sql
+-- 1. Role exists, cannot log in
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'afri_app') then
+    create role afri_app nologin;
+  end if;
+end $$;
+
+-- 2. Let the connecting user assume the role (this is what 42501 is about)
+grant afri_app to current_user with set true;
+
+-- 3. Privileges for current and future objects
+grant usage on schema public to afri_app;
+grant select, insert, update, delete on all tables in schema public to afri_app;
+grant usage, select on all sequences in schema public to afri_app;
+grant execute on all functions in schema public to afri_app;
+alter default privileges in schema public
+  grant select, insert, update, delete on tables to afri_app;
+alter default privileges in schema public
+  grant usage, select on sequences to afri_app;
+alter default privileges in schema public
+  grant execute on functions to afri_app;
+```
+
+Keep the least-privilege revokes from migrations 001–004 in place
+(`auth_sessions`, `auth_throttle`, `invitations`, `password_hash`,
+`is_project_admin`-style columns and `projects` inserts are intentionally not
+granted to `afri_app`).
+
+**Symptom if this grant is missing.** `/api/health` returns 200 (it uses
+`db.admin()`, which does not switch roles) while every workspace route returns
+500 and the log shows:
+
+```
+{"event":"request_failed","path":"/api/workspace","code":"42501",
+ "role":"afri_app","hint":"PostgreSQL 42501: ..."}
+```
+
+Confirm before users do:
+
+```bash
+curl -s https://<deployment>/api/health?verbose=1 | jq
+# { "status": "ok", "dbReachable": true, "roleSwitchOk": true, ... }
+```
+
+`roleSwitchOk` runs `SET LOCAL ROLE afri_app` inside a transaction and rolls it
+back, so it fails loudly (HTTP 503) exactly when the workspace would fail.
 
 ## Configuration
 

@@ -91,7 +91,7 @@ describe('authenticated API and database isolation', () => {
       code: '42501',
     });
     const brokenApp = createApp({
-      admin: async (fn) =>
+      admin: async (fn: (c: { query: (sql: string) => Promise<{ rows: unknown[] }> }) => unknown) =>
         fn({
           query: async (sql: string) =>
             /from auth_sessions s join user_profiles u/i.test(sql)
