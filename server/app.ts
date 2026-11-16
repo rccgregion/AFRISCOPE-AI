@@ -169,11 +169,19 @@ export function createApp(db: Database) {
     if (process.env.DEMO_MODE !== undefined) return process.env.DEMO_MODE === 'true';
     return process.env.DEMO_ENABLED !== 'false';
   };
-  // Basic per-IP rate limiting for unauthenticated auth endpoints
-  // (~10 attempts/min). In-memory per app instance; on serverless each
-  // instance enforces its own budget, which is sufficient abuse friction
-  // for demo/auto auth.
+  // Basic per-IP rate limiting for unauthenticated auth endpoints.
+  //
+  // Only *failed* attempts consume the budget. Counting successes locked real
+  // users out: every page load calls /auth/auto, so ten page loads in a minute
+  // returned 429 and the workspace never loaded (the browser suite hit this).
+  // Successful sign-ins are already bounded by the session cookie, and
+  // /auth/login has its own per-identifier throttle in auth_throttle.
+  //
+  // In-memory per app instance; on serverless each instance enforces its own
+  // budget, which is sufficient abuse friction for demo/auto auth.
   const authAttempts = new Map<string, number[]>();
+  const AUTH_WINDOW_MS = 60_000;
+  const AUTH_MAX_FAILURES = 10;
   const authRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const forwarded = req.headers['x-forwarded-for'];
     const ip =
@@ -181,14 +189,20 @@ export function createApp(db: Database) {
       (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
       'unknown';
     const now = Date.now();
-    const windowMs = 60_000;
-    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < windowMs);
-    if (recent.length >= 10) {
-      res.status(429).json({ error: 'Too many authentication attempts. Try again in a minute.' });
+    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < AUTH_WINDOW_MS);
+    if (recent.length >= AUTH_MAX_FAILURES) {
+      res
+        .status(429)
+        .json({ error: 'Too many failed authentication attempts. Try again in a minute.' });
       return;
     }
-    recent.push(now);
     authAttempts.set(ip, recent);
+    res.on('finish', () => {
+      if (res.statusCode < 400) return;
+      const stamps = (authAttempts.get(ip) || []).filter((t) => Date.now() - t < AUTH_WINDOW_MS);
+      stamps.push(Date.now());
+      authAttempts.set(ip, stamps);
+    });
     next();
   };
   // Vercel rewrite compatibility: the /api/(.*) rewrite targets the single

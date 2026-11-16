@@ -343,3 +343,27 @@ describe('5.5 health names the database actually in use', () => {
     expect(serialised).not.toMatch(/:\/\/[^@\s"]+@/);
   });
 });
+
+describe('auth rate limit only counts failures', () => {
+  it('allows many successful demo sign-ins from one client', async () => {
+    // A page load calls /auth/auto; ten successful loads used to lock the user
+    // out with 429 and the workspace never rendered.
+    for (let i = 0; i < 14; i++) {
+      await post('programme_manager', '/auth/auto', {}).expect(200);
+    }
+    await post('programme_manager', '/auth/demo', { role: 'programme_manager' }).expect(200);
+  });
+
+  it('still blocks a client that keeps failing', async () => {
+    const agent = request.agent(app);
+    let blocked = false;
+    for (let i = 0; i < 14; i++) {
+      const res = await agent
+        .post(path('/auth/login'))
+        .set('X-AfriScope-Request', '1')
+        .send({ identifier: 'nobody@example.org', password: 'wrong-password' });
+      if (res.status === 429) blocked = true;
+    }
+    expect(blocked).toBe(true);
+  });
+});
