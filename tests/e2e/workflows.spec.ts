@@ -18,9 +18,11 @@ test('public entry opens a real synthetic workspace', async ({ page }) => {
     'See the risks. Shape the next move.',
   );
   // The banner names the data state, which is the honest label (Part 1.2); the
-  // synthetic nature of the rows is stated in the same line.
-  await expect(page.getByText('Demo data', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Sample rows are synthetic/)).toBeVisible();
+  // synthetic nature of the rows is stated in the same line. Scoped to the
+  // banner because the header shows the same state in its own pill.
+  const banner = page.locator('.demo-banner');
+  await expect(banner.getByText('Demo data', { exact: true })).toBeVisible();
+  await expect(banner.getByText(/Sample rows are synthetic/)).toBeVisible();
   await expect(page.getByRole('link', { name: /Facilities monitored/ })).toBeVisible();
 });
 test('all module routes render without page errors', async ({ page }) => {
