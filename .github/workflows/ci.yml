@@ -28,23 +28,37 @@ jobs:
       - run: |
           set -o pipefail
           npm run test:e2e 2>&1 | tee e2e.log
-      # Surface the failing test names as annotations, so a failure can be read
-      # from the checks API without downloading the artifact.
+      # Surface each failing test with its assertion context as one annotation,
+      # so a failure can be read from the checks API without the artifact.
       - name: Summarise e2e failures
         if: failure()
         run: |
           {
             echo '### Playwright failures'
             echo '```'
-            grep -E '^\s+(✘|×|[0-9]+\))' -A 4 e2e.log | head -n 200 || tail -n 60 e2e.log
+            grep -E '^\s+[0-9]+\) ' -A 25 e2e.log | head -n 300 || tail -n 80 e2e.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-          grep -E '^\s+[0-9]+\) ' e2e.log | head -n 10 | while read -r line; do
-            echo "::error title=Playwright failure::$line"
-          done
-          grep -E 'Error: expect' e2e.log | head -n 10 | while read -r line; do
-            echo "::error title=Playwright assertion::$line"
-          done
+          node -e '
+            const fs = require("fs");
+            const log = fs.readFileSync("e2e.log", "utf8").split("\n");
+            const out = [];
+            for (let i = 0; i < log.length; i++) {
+              const m = log[i].match(/^\s+(\d+)\) (.+)$/);
+              if (!m) continue;
+              const context = log
+                .slice(i + 1, i + 26)
+                .map((l) => l.trim())
+                .filter((l) => l && !l.startsWith("at "))
+                .slice(0, 6)
+                .join(" | ")
+                .replace(/%/g, "%25")
+                .replace(/\r/g, " ")
+                .replace(/\n/g, " ");
+              out.push(`::error title=Playwright ${m[1]}::${m[2]} --- ${context}`.slice(0, 1000));
+            }
+            console.log(out.slice(0, 10).join("\n"));
+          '
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
