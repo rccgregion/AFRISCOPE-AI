@@ -92,7 +92,7 @@ const base = (project: string) => ({
   project_id: project,
   created_by: demoUserId('programme_manager'),
 });
-export async function seedDemo(db: Database, reset = false) {
+export async function seedDemo(db: Database, reset = false, sampleOnlyDeletes = false) {
   const [med, fin, plan] = DEMO_PROJECTS;
   const alreadySeeded = await db.admin(async (c) => {
     await c.query('select pg_advisory_xact_lock(729401)');
@@ -107,7 +107,11 @@ export async function seedDemo(db: Database, reset = false) {
         'procurement_events',
         'budgets',
       ])
-        await c.query(`delete from ${t} where organisation_id=$1`, [DEMO_ORG]);
+        await c.query(
+          `delete from ${t} where organisation_id=$1` +
+            (sampleOnlyDeletes && SAMPLE_ORIGIN_SET.has(t) ? " and data_origin='sample'" : ''),
+          [DEMO_ORG],
+        );
       for (const t of [
         'data_import_jobs',
         'data_quality_results',
@@ -115,7 +119,11 @@ export async function seedDemo(db: Database, reset = false) {
         'dataset_versions',
         'datasets',
       ])
-        await c.query(`delete from ${t} where organisation_id=$1`, [DEMO_ORG]);
+        await c.query(
+          `delete from ${t} where organisation_id=$1` +
+            (sampleOnlyDeletes && SAMPLE_ORIGIN_SET.has(t) ? " and data_origin='sample'" : ''),
+          [DEMO_ORG],
+        );
       for (const t of [
         'reports',
         'learning_progress',
@@ -141,7 +149,11 @@ export async function seedDemo(db: Database, reset = false) {
         'stakeholders',
         'audit_logs',
       ])
-        await c.query(`delete from ${t} where organisation_id=$1`, [DEMO_ORG]);
+        await c.query(
+          `delete from ${t} where organisation_id=$1` +
+            (sampleOnlyDeletes && SAMPLE_ORIGIN_SET.has(t) ? " and data_origin='sample'" : ''),
+          [DEMO_ORG],
+        );
       for (const t of [
         'model_versions',
         'models',
@@ -150,7 +162,11 @@ export async function seedDemo(db: Database, reset = false) {
         'facilities',
         'medicine_products',
       ])
-        await c.query(`delete from ${t} where organisation_id=$1`, [DEMO_ORG]);
+        await c.query(
+          `delete from ${t} where organisation_id=$1` +
+            (sampleOnlyDeletes && SAMPLE_ORIGIN_SET.has(t) ? " and data_origin='sample'" : ''),
+          [DEMO_ORG],
+        );
       await c.query('update projects set settings=$1 where organisation_id=$2', [
         json({ stock_threshold_days: 21, as_of: AS_OF }),
         DEMO_ORG,
@@ -602,6 +618,88 @@ export async function seedDemo(db: Database, reset = false) {
       ]);
     }
     await seedNarrative(tx, med, fin, plan, forecast, stock);
+  });
+  await markDemoRowsAsSample(db);
+}
+
+/**
+ * Label every demonstration row as data_origin='sample'.
+ *
+ * Inserts in this file rely on the column default ('real'), which is correct
+ * for tenant data but wrong for the seeded demonstration workspace, so the
+ * whole demo organisation is relabelled once at the end of seeding. Idempotent
+ * and scoped to DEMO_ORG, so private/tenant rows are never touched.
+ *
+ * Tables absent from this list either have no data_origin column or hold no
+ * sample-derived content.
+ */
+const SAMPLE_ORIGIN_TABLES = [
+    'projects',
+    'datasets',
+    'dataset_versions',
+    'data_quality_results',
+    'facilities',
+    'medicine_products',
+    'inventory_records',
+    'consumption_records',
+    'funding_releases',
+    'expenditure_records',
+    'budgets',
+    'procurement_events',
+    'deliveries',
+    'operational_alerts',
+    'recommendations',
+    'recommendation_evidence',
+    'evidence_records',
+    'optimisation_scenarios',
+    'intervention_options',
+    'analytical_runs',
+    'experiments',
+    'experiment_runs',
+    'experiment_results',
+    'problem_briefs',
+    'stakeholders',
+    'risk_assessments',
+    'milestones',
+    'action_items',
+  ];
+const SAMPLE_ORIGIN_SET = new Set<string>(SAMPLE_ORIGIN_TABLES);
+
+export async function markDemoRowsAsSample(db: Database) {
+  const tables = SAMPLE_ORIGIN_TABLES;
+  await db.admin(async (c) => {
+    // Scoped to the three demonstration projects. Never org-wide: real
+    // facilities or real rows that happen to share the demo organisation
+    // (for example the verified Mwulire Health Center record) must keep
+    // data_origin='real'.
+    await c.query(
+      `update projects set data_origin='sample'
+        where organisation_id=$1 and id = any($2::uuid[]) and data_origin<>'sample'`,
+      [DEMO_ORG, DEMO_PROJECTS],
+    );
+    for (const t of tables) {
+      if (t === 'projects') continue;
+      await c.query(
+        `update ${t} set data_origin='sample'
+          where organisation_id=$1 and project_id = any($2::uuid[]) and data_origin<>'sample'`,
+        [DEMO_ORG, DEMO_PROJECTS],
+      );
+    }
+    // Make the label visible, not just queryable: demonstration facility names
+    // and alert titles carry an explicit sample marker. Idempotent, and still
+    // scoped to the demonstration projects so real rows are never rewritten.
+    await c.query(
+      `update facilities set name = '[Sample] ' || name
+        where organisation_id=$1 and project_id = any($2::uuid[])
+          and data_origin='sample' and name not like '[Sample] %'`,
+      [DEMO_ORG, DEMO_PROJECTS],
+    );
+    await c.query(
+      `update operational_alerts set title = 'Simulated: ' || title
+        where organisation_id=$1 and project_id = any($2::uuid[])
+          and data_origin='sample' and title not like 'Simulated:%'`,
+      [DEMO_ORG, DEMO_PROJECTS],
+    );
   });
 }
 export async function bootstrapAdmin(

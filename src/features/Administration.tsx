@@ -27,6 +27,7 @@ import {
   Empty,
 } from '../components/ui';
 import { ROLES, ROLE_LABELS, type Role, AS_OF } from '../../shared/domain';
+import { DataControls } from '../components/origin';
 export function Projects() {
   const { workspace, project, selectProject, allow } = useStore();
   const [create, setCreate] = useState(false);
@@ -160,6 +161,8 @@ export function Administration() {
         title="The right access. Clear accountability."
         description="Manage project roles, invitations, and the synthetic demonstration environment."
       />
+      <div id="data" />
+      <DataControls />
       <div className="two-col">
         <Panel title="Organisation profile">
           <KeyValue
