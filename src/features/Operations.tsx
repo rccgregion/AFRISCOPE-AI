@@ -15,6 +15,14 @@ import {
 } from 'lucide-react';
 import { GisMap } from '../components/GisMap';
 import { useStore, useAction, type Row } from '../lib/store';
+import {
+  OriginBadge,
+  OriginFilter,
+  MixedOriginWarning,
+  NoDataYet,
+  matchesScope,
+  type OriginScope,
+} from '../components/origin';
 import { api, exportCSV } from '../lib/api';
 import {
   PageHeader,
@@ -54,7 +62,17 @@ export function Operations() {
     [evidence, setEvidence] = useState<string | null>(null),
     [country, setCountry] = useState('All countries'),
     [risk, setRisk] = useState('All risks'),
-    [currency, setCurrency] = useState('NGN');
+    [currency, setCurrency] = useState('NGN'),
+    [origin, setOrigin] = useState<OriginScope>('all');
+  const originCounts = {
+    sample: (data?.operational_alerts || []).filter((a) => a.data_origin === 'sample').length,
+    real: (data?.operational_alerts || []).filter((a) => a.data_origin !== 'sample').length,
+  };
+  const scopedAlerts = (data?.operational_alerts || []).filter((a) => matchesScope(a.data_origin, origin));
+  const fundingCounts = {
+    sample: (data?.funding_releases || []).filter((r) => r.data_origin === 'sample').length,
+    real: (data?.funding_releases || []).filter((r) => r.data_origin !== 'sample').length,
+  };
   useEffect(() => {
     if (!project) return;
     let active = true;
@@ -88,6 +106,7 @@ export function Operations() {
   ];
   const filtered = (stock || []).filter(
     (r) =>
+      matchesScope(r.data_origin, origin) &&
       (country === 'All countries' || r.country === country) &&
       (risk === 'All risks' || r.risk === risk),
   );
@@ -130,6 +149,7 @@ export function Operations() {
             Data is a fixed synthetic snapshot, not a live facility feed. Coverage uses usable stock
             divided by average daily consumption over four complete weeks.
           </Notice>
+          <OriginFilter value={origin} onChange={setOrigin} counts={originCounts} />
           <div className="section-toolbar">
             <div className="inline-fields">
               <label>
@@ -312,6 +332,27 @@ export function Operations() {
       )}
       {tab === 'Finance' && (
         <>
+          <OriginFilter value={origin} onChange={setOrigin} counts={fundingCounts} />
+          <div className="finance-origin-split">
+            {(['sample', 'real'] as const).map((o) => (
+              <div key={o}>
+                <span>{o === 'sample' ? 'Sample rows' : 'Real rows'}</span>
+                <strong>
+                  {(data?.funding_releases || []).filter((r) => (r.data_origin ?? 'real') === o)
+                    .length}{' '}
+                  releases ·{' '}
+                  {money(
+                    (data?.funding_releases || [])
+                      .filter((r) => (r.data_origin ?? 'real') === o && r.currency === currency)
+                      .reduce((sum, r) => sum + Number(r.amount_cents || 0), 0) / 100,
+                    currency,
+                  )}
+                </strong>
+                <small>{o === 'sample' ? 'Sample data - not reported by any facility' : 'Imported real data'}</small>
+              </div>
+            ))}
+          </div>
+          <MixedOriginWarning counts={fundingCounts} />
           <div className="section-toolbar">
             <Notice>
               Amounts are never combined across currencies. Commitments, payments and expenditure
@@ -458,6 +499,8 @@ export function Operations() {
         </Panel>
       )}
       {tab === 'Alerts' && (
+        <>
+        <OriginFilter value={origin} onChange={setOrigin} counts={originCounts} />
         <Panel
           title="Operational alert queue"
           subtitle="Every signal includes its trigger, source record, owner, and next action."
@@ -469,7 +512,7 @@ export function Operations() {
           }
         >
           <Table
-            rows={data?.operational_alerts || []}
+            rows={scopedAlerts}
             label="Operational alerts"
             columns={[
               {
@@ -491,10 +534,22 @@ export function Operations() {
                   data?.members.find((m) => m.user_id === r.owner_id)?.full_name || 'Unassigned',
               },
               { key: 'status', label: 'Status', render: (r) => <Status value={r.status} /> },
+              {
+                key: 'data_origin',
+                label: 'Origin',
+                render: (r) =>
+                  r.data_origin === 'sample' ? (
+                    <OriginBadge origin="sample" />
+                  ) : (
+                    <Badge tone="green">Real</Badge>
+                  ),
+              },
             ]}
             onRowClick={setAlert}
           />
+          {!scopedAlerts.length && <NoDataYet what="operational alerts" />}
         </Panel>
+        </>
       )}
       {tab === 'Actions & milestones' && (
         <div className="two-col">

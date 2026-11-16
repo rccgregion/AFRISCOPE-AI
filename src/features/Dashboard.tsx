@@ -1173,6 +1173,9 @@ export function Dashboard() {
                     <strong>{a.title}</strong>
                     <p>{a.triggering_condition}</p>
                     <small>{a.category}</small>
+                    {a.data_origin === 'sample' && (
+                      <small className="sample-inline">Sample data - not reported by any facility</small>
+                    )}
                   </div>
                 </Link>
               ))}

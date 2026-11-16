@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Upload,
   Download,
@@ -30,11 +31,26 @@ import {
 import { TimeChart } from '../components/charts';
 import { requiredFields } from '../../server/validation';
 import { dateLabel } from '../../shared/domain';
+import {
+  OriginBadge,
+  OriginFilter,
+  MixedOriginWarning,
+  NoDataYet,
+  matchesScope,
+  type OriginScope,
+} from '../components/origin';
 export function DataIntelligence() {
   const { data, project, allow } = useStore();
   const [tab, setTab] = useState('Data catalogue'),
     [wizard, setWizard] = useState(false),
-    [selected, setSelected] = useState<Row | null>(null);
+    [selected, setSelected] = useState<Row | null>(null),
+    [scope, setScope] = useState<OriginScope>('all');
+  const originCounts = {
+    sample: (data?.facilities || []).filter((f) => f.data_origin === 'sample').length,
+    real: (data?.facilities || []).filter((f) => f.data_origin !== 'sample').length,
+  };
+  const scopedDatasets = (data?.datasets || []).filter((d) => matchesScope(d.data_origin, scope));
+  const scopedFacilities = (data?.facilities || []).filter((f) => matchesScope(f.data_origin, scope));
   return (
     <>
       <PageHeader
@@ -51,6 +67,15 @@ export function DataIntelligence() {
           Import dataset
         </Button>
       </PageHeader>
+      <div className="origin-bar">
+        <OriginFilter value={scope} onChange={setScope} counts={originCounts} />
+        <MixedOriginWarning counts={originCounts} />
+        {allow('admin') && (
+          <Link className="btn btn-secondary" to="/administration#data">
+            Clear sample data
+          </Link>
+        )}
+      </div>
       <Tabs
         items={[
           'Data catalogue',
@@ -75,10 +100,10 @@ export function DataIntelligence() {
                 documented lawful-use review.
               </p>
             </div>
-            <Badge tone="green">{data?.datasets.length || 0} datasets</Badge>
+            <Badge tone="green">{scopedDatasets.length} datasets</Badge>
           </div>
           <div className="dataset-grid">
-            {data?.datasets.map((d) => (
+            {scopedDatasets.map((d) => (
               <button className="dataset-card" key={d.id} onClick={() => setSelected(d)}>
                 <div>
                   <span className="file-icon">
@@ -91,9 +116,10 @@ export function DataIntelligence() {
                 <div className="dataset-meta">
                   <span>{d.kind.replaceAll('_', ' ')}</span>
                   <span>
-                    {data.dataset_versions.filter((v) => v.dataset_id === d.id).length} version(s)
+                    {(data?.dataset_versions || []).filter((v) => v.dataset_id === d.id).length} version(s)
                   </span>
                 </div>
+                <OriginBadge origin={d.data_origin} />
                 <footer>
                   <span>
                     <ShieldIcon />
@@ -104,17 +130,56 @@ export function DataIntelligence() {
               </button>
             ))}
           </div>
-          {!data?.datasets.length && (
+          {!scopedDatasets.length && (
             <Empty
-              title="Bring your first dataset"
-              description="CSV and XLSX imports are validated before any record enters the analytical workspace."
+              title={scope === 'real' ? 'No real data in this project yet' : 'Bring your first dataset'}
+              description={
+                scope === 'real'
+                  ? 'Only real rows are shown. Import your facility and stock files to replace the labelled sample pack — or switch the origin filter back to All.'
+                  : 'CSV and XLSX imports are validated before any record enters the analytical workspace.'
+              }
               action={
-                <Button disabled={!allow('data')} onClick={() => setWizard(true)}>
-                  Import a dataset
-                </Button>
+                <div className="inline-actions">
+                  <Button disabled={!allow('data')} onClick={() => setWizard(true)}>
+                    Import your real data
+                  </Button>
+                  <a className="btn btn-secondary" href="/api/import-templates/facilities">
+                    Facility template
+                  </a>
+                </div>
               }
             />
           )}
+          <Panel
+            title="Facility records in this view"
+            subtitle="Every sample row is labelled. Real rows come from files you imported and carry their source."
+          >
+            {scopedFacilities.length ? (
+              <Table
+                rows={scopedFacilities.slice(0, 25)}
+                label="Facilities"
+                pageSize={10}
+                columns={[
+                  { key: 'name', label: 'Facility' },
+                  { key: 'external_id', label: 'ID' },
+                  { key: 'country', label: 'Country' },
+                  {
+                    key: 'source',
+                    label: 'Source',
+                    render: (r) => r.source || (r.data_origin === 'sample' ? 'Sample pack' : '—'),
+                  },
+                  {
+                    key: 'data_origin',
+                    label: 'Origin',
+                    render: (r) =>
+                      r.data_origin === 'sample' ? <OriginBadge origin="sample" /> : <Badge tone="green">Real</Badge>,
+                  },
+                ]}
+              />
+            ) : (
+              <NoDataYet what="facility records" onImport={allow('data') ? () => setWizard(true) : undefined} />
+            )}
+          </Panel>
           <Panel
             title="Available synthetic downloads"
             subtitle="Fixed seed 20260930. All places and operational records are fictional."
@@ -264,7 +329,7 @@ export function DataIntelligence() {
                   setSelected((data!.datasets.find((d) => d.id === e.target.value) as Row) || null)
                 }
               >
-                {data?.datasets.map((d) => (
+                {scopedDatasets.map((d) => (
                   <option value={d.id} key={d.id}>
                     {d.name}
                   </option>

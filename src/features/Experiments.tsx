@@ -9,6 +9,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useStore, useAction, type Row } from '../lib/store';
+import { PromptLibrary } from './PromptLibrary';
 import { api, download } from '../lib/api';
 import {
   PageHeader,
@@ -52,6 +53,7 @@ export function Experiments() {
           New experiment
         </Button>
       </PageHeader>
+      <PromptLibrary />
       <Notice>
         Baseline experiments execute synchronously in the application. External-model prompt
         comparisons are illustrative until a provider is configured and an evaluation is actually

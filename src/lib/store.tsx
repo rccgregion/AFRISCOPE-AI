@@ -41,6 +41,7 @@ export type ProjectData = {
   | 'learning_modules'
   | 'learning_progress'
   | 'facilities'
+  | 'funding_releases'
   | 'medicine_products'
   | 'deliveries'
   | 'audit_logs'

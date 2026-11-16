@@ -1,0 +1,11 @@
+facility_id,facility_name,country,district_or_lga,facility_type,catchment_population,lat,lon,notes
+RW-MWU-001,Mwulire Health Center,Rwanda,Rwamagana,Primary Health Center,37200,-1.95,30.43,"Horizon 1000 example site; recently upgraded"
+RW-RWG-003,Rwamagana District Hospital,Rwanda,Rwamagana,District Hospital,185000,-1.95,30.43,"Referral facility for Mwulire cluster"
+KE-NBO-014,KEMRI-linked Primary Care Site,Kenya,Nairobi,Research-linked PHC,28000,-1.30,36.80,"KEMRI research network context"
+KE-KSM-011,Kisumu County PHC Cluster Site,Kenya,Kisumu,Primary Health Centre,34000,-0.09,34.77,"Supply chain innovation context"
+ET-ADD-007,EPHI-linked Primary Facility,Ethiopia,Addis Ababa,Primary,45000,9.03,38.74,"CBHI and public budget context"
+NG-KAN-022,Kano Urban Primary Health Centre,Nigeria,Kano,Primary Health Centre,51000,12.00,8.52,"BHCPF / NHIA context; high-volume urban PHC"
+NG-ABJ-009,Abuja Satellite PHC,Nigeria,FCT,Primary Health Centre,29000,9.08,7.40,"Close to federal financing flows"
+NG-LAG-018,Lagos Mainland Primary Facility,Nigeria,Lagos,Primary Health Centre,62000,6.52,3.38,"High-volume; mixed formal/informal insurance"
+ZA-JHB-005,Gauteng District Primary Clinic,South Africa,Johannesburg,Primary Clinic,38000,-26.20,28.04,"Horizon 1000 expansion context"
+ZA-CPT-012,Western Cape Community Health Centre,South Africa,Cape Town,Community Health Centre,45000,-33.92,18.42,"AI diagnostics and regulatory capacity context"

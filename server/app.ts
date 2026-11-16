@@ -39,6 +39,25 @@ import {
 import { explain } from './assistant.js';
 import { realtime } from './realtime.js';
 import { backupService } from './backup.js';
+import { importSamplePack, SAMPLE_LABEL, SIMULATED_ALERT_PREFIX } from './sample-pack.js';
+import {
+  dryRunClear,
+  clearSampleData,
+  restoreSampleData,
+  CLEAR_CONFIRMATION,
+} from './sample-controls.js';
+import {
+  validateFacilitiesCsv,
+  validateStockCsv,
+  writeBatch,
+  facilityTemplateCsv,
+  stockTemplateCsv,
+  DATA_DICTIONARY,
+  DUPLICATE_POLICIES,
+  type DuplicatePolicy,
+} from './real-import.js';
+import { SAVED_PROMPTS, BEHAVIOUR_RULES, PROMPT_SCOPE_LABEL } from './prompts.js';
+import { runPrompt } from './prompt-runner.js';
 import { listConnectors, createConnector, syncConnector } from './connectors.js';
 import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis.js';
 
@@ -622,6 +641,7 @@ export function createApp(db: Database) {
         'facilities',
         'medicine_products',
         'deliveries',
+        'funding_releases',
         'audit_logs',
         'notifications',
         'analytical_runs',
@@ -1938,6 +1958,507 @@ export function createApp(db: Database) {
     });
 
     res.json({ ok: true, received: true, action: 'broadcast', table, type });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Sample-data controls and clean real-data input (TASK 2).
+  //
+  // Feature flags: SAMPLE_DATA_CONTROLS (clear) defaults ON because it never
+  // touches real rows; SAMPLE_DATA_RESTORE (restore) defaults OFF in
+  // production per the no-break protocol and is enabled explicitly.
+  // ---------------------------------------------------------------------------
+  const flagOn = (name: string, fallback: boolean) => {
+    const raw = process.env[name];
+    if (raw === undefined) return fallback;
+    return raw === 'true';
+  };
+  const sampleControlsEnabled = () => flagOn('SAMPLE_DATA_CONTROLS', true);
+  const sampleRestoreEnabled = () => flagOn('SAMPLE_DATA_RESTORE', false);
+  const isOrgAdmin = async (req: Request, organisationId: string) =>
+    scoped(req, async (c) => {
+      const row = (
+        await c.query(
+          `select 1 as ok from organisation_memberships
+            where organisation_id=$1 and user_id=app_uid() and role in ('organisation_admin')`,
+          [organisationId],
+        )
+      ).rows[0];
+      const flag = (req as Authed).user?.is_platform_admin;
+      return Boolean(row) || Boolean(flag);
+    });
+
+  route('post', '/projects/:id/prompts/:promptId/run', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'read', id);
+    const promptId = z.string().max(80).parse(req.params.promptId);
+    const { scope } = z
+      .object({ scope: z.enum(['sample', 'real', 'both']).default('both') })
+      .parse(req.body || {});
+    const result = await scoped(req, (c) => runPrompt(c, id, promptId, scope));
+    res.json(result);
+  });
+
+  route('get', '/prompts', async (_req, res) => {
+    res.json({
+      prompts: SAVED_PROMPTS,
+      behaviour_rules: BEHAVIOUR_RULES,
+      scopes: PROMPT_SCOPE_LABEL,
+    });
+  });
+
+  // Origin summary: sample and real totals are never silently mixed.
+  route('get', '/projects/:id/origin-summary', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'read', id);
+    res.json(
+      await scoped(req, async (c) => {
+        const one_ = async (table: string) => {
+          const row = (
+            await c.query(
+              `select count(*) filter (where data_origin='sample')::int as sample,
+                      count(*) filter (where data_origin='real')::int as real
+                 from ${table} where project_id=$1`,
+              [id],
+            )
+          ).rows[0] as { sample: number; real: number };
+          return { sample: Number(row.sample), real: Number(row.real) };
+        };
+        const tables = [
+          'facilities',
+          'inventory_records',
+          'consumption_records',
+          'operational_alerts',
+          'recommendations',
+          'funding_releases',
+        ];
+        const counts: Record<string, { sample: number; real: number }> = {};
+        for (const t of tables) counts[t] = await one_(t);
+        const alerts = (
+          await c.query(
+            `select id, title, severity, data_origin from operational_alerts
+              where project_id=$1 order by created_at desc limit 50`,
+            [id],
+          )
+        ).rows.map((r) => ({
+          ...r,
+          simulated: String(r.data_origin) === 'sample',
+          label: String(r.data_origin) === 'sample' ? SAMPLE_LABEL : null,
+          title_prefix: String(r.data_origin) === 'sample' ? SIMULATED_ALERT_PREFIX : null,
+        }));
+        return {
+          project_id: id,
+          counts,
+          mixed: tables.some((t) => counts[t].sample > 0 && counts[t].real > 0),
+          sample_label: SAMPLE_LABEL,
+          simulated_prefix: SIMULATED_ALERT_PREFIX,
+          alerts,
+        };
+      }),
+    );
+  });
+
+  route(
+    'post',
+    '/sample-pack/import',
+    async (req, res) => {
+      const org = String((req as Authed).user.id);
+      void org;
+      const result = await importSamplePack(db, (req as Authed).user.id);
+      res.status(result.rejections.length ? 422 : 201).json(result);
+    },
+    true,
+  );
+
+  route('get', '/projects/:id/import-batches', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'read', id);
+    res.json({
+      batches: (
+        await scoped(req, (c) =>
+          c.query(
+            `select id, file_name, source, batch_kind, row_counts, rejection_count, undone_at, created_at
+               from data_import_batches where project_id=$1 order by created_at desc limit 50`,
+            [id],
+          ),
+        )
+      ).rows,
+    });
+  });
+
+  route('get', '/import-templates/:kind', async (req, res) => {
+    const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
+    const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
+    if (format === 'json') {
+      res.json({ kind, fields: DATA_DICTIONARY[kind] });
+      return;
+    }
+    const csv = kind === 'facilities' ? facilityTemplateCsv() : stockTemplateCsv();
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
+    res.send(csv);
+  });
+
+  route('get', '/projects/:id/sample-data/dry-run', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'manage', id);
+    if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
+    const org = await scoped(req, async (c) =>
+      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+    );
+    const admin = await isOrgAdmin(req, org);
+    if (!admin) throw httpError(403, 'Administrator role required');
+    const dry = await dryRunClear(db, org);
+    res.json({ ...dry, confirmation_phrase: CLEAR_CONFIRMATION });
+  });
+
+  route('post', '/projects/:id/sample-data/clear', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'manage', id);
+    if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
+    const org = await scoped(req, async (c) =>
+      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+    );
+    if (!(await isOrgAdmin(req, org))) throw httpError(403, 'Administrator role required');
+    const body = z
+      .object({ confirmation: z.string().max(64), dry_run_token: z.string().max(64).optional() })
+      .parse(req.body || {});
+    // Snapshot before deleting anything.
+    let snapshot: { id: string; filename: string; checksum: string } | null = null;
+    try {
+      const backup = await backupService.createBackup(db, org, (req as Authed).user.id, 'manual');
+      snapshot = {
+        id: backup.id,
+        filename: backup.filename,
+        checksum: backup.checksum,
+      };
+    } catch {
+      snapshot = null;
+    }
+    const result = await clearSampleData(
+      db,
+      org,
+      id,
+      (req as Authed).user.id,
+      body.confirmation,
+      snapshot,
+    );
+    if (!result.cleared) {
+      res.status(400).json({ cleared: false, reason: result.reason, snapshot });
+      return;
+    }
+    res.json(result);
+  });
+
+  route('post', '/projects/:id/sample-data/restore', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'manage', id);
+    if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
+    if (!sampleRestoreEnabled())
+      throw httpError(403, 'Restore is disabled. Set SAMPLE_DATA_RESTORE=true to enable it.');
+    const result = await restoreSampleData(db, (req as Authed).user.id);
+    res.json(result);
+  });
+
+  // Real-data import: preview validates without writing.
+  route('post', '/projects/:id/real-import/preview', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'data', id);
+    const body = z
+      .object({
+        facilities_csv: z.string().max(2_000_000).optional(),
+        stock_csv: z.string().max(4_000_000).optional(),
+      })
+      .parse(req.body || {});
+    if (!body.facilities_csv && !body.stock_csv)
+      throw httpError(400, 'Provide facilities_csv and/or stock_csv');
+    const existing = await scoped(req, async (c) =>
+      (await c.query('select external_id from facilities where project_id=$1', [id])).rows.map((r) =>
+        String(r.external_id),
+      ),
+    );
+    const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
+    const knownIds = new Set([
+      ...existing,
+      ...(facilities?.accepted.map((f) => f.facility_id) ?? []),
+    ]);
+    const stock = body.stock_csv ? validateStockCsv(body.stock_csv, knownIds) : null;
+    res.json({
+      facilities: facilities
+        ? {
+            accepted: facilities.accepted.length,
+            rejections: facilities.rejections,
+            warnings: facilities.warnings,
+            preview: facilities.accepted.slice(0, 20),
+          }
+        : null,
+      stock: stock
+        ? {
+            accepted: stock.accepted.length,
+            rejections: stock.rejections,
+            warnings: stock.warnings,
+            preview: stock.accepted.slice(0, 20),
+          }
+        : null,
+      committed: false,
+    });
+  });
+
+  route('post', '/projects/:id/real-import/commit', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'data', id);
+    const body = z
+      .object({
+        facilities_csv: z.string().max(2_000_000).optional(),
+        stock_csv: z.string().max(4_000_000).optional(),
+        duplicate_policy: z.enum(DUPLICATE_POLICIES).default('reject'),
+        file_name: z.string().max(200).optional(),
+      })
+      .parse(req.body || {});
+    if (!body.facilities_csv && !body.stock_csv)
+      throw httpError(400, 'Provide facilities_csv and/or stock_csv');
+
+    const outcome = await scoped(req, async (c) => {
+      const { org, actor } = await context(c, id);
+      const existing = (await c.query('select external_id from facilities where project_id=$1', [id]))
+        .rows.map((r) => String(r.external_id));
+      const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
+      const knownIds = new Set([
+        ...existing,
+        ...(facilities?.accepted.map((f) => f.facility_id) ?? []),
+      ]);
+      const stock = body.stock_csv ? validateStockCsv(body.stock_csv, knownIds) : null;
+      const rejections = [...(facilities?.rejections ?? []), ...(stock?.rejections ?? [])];
+      if (!facilities?.accepted.length && !stock?.accepted.length) {
+        return { committed: false, rejections, written: null };
+      }
+      const batch = await insert(c, 'data_import_batches', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        batch_kind: 'real_import',
+        data_origin: 'real',
+        file_name: body.file_name ?? 'real import',
+        source: 'user upload',
+        row_counts: {
+          facilities: facilities?.accepted.length ?? 0,
+          stock: stock?.accepted.length ?? 0,
+        },
+        rejection_count: rejections.length,
+        notes: `duplicate policy: ${body.duplicate_policy}`,
+      });
+      const dataset = await insert(c, 'datasets', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        name: `Real import ${new Date().toISOString().slice(0, 10)}`,
+        kind: 'inventory',
+        description: 'User-imported real data',
+        source: body.file_name ?? 'user upload',
+        owner: (req as Authed).user.full_name,
+        sensitivity: 'Internal',
+        quality_status: rejections.length ? 'Issues found' : 'Validated',
+        lineage: 'Upload → validation → batch commit',
+        data_origin: 'real',
+      });
+      const version = await insert(c, 'dataset_versions', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        dataset_id: dataset.id,
+        version: 1,
+        row_count: (facilities?.accepted.length ?? 0) + (stock?.accepted.length ?? 0),
+        checksum: `real-${batch.id}`,
+        notes: `Batch ${batch.id}`,
+        data_origin: 'real',
+      });
+      const written = await writeBatch(c, {
+        organisationId: org,
+        projectId: id,
+        actorId: actor,
+        batchId: String(batch.id),
+        versionId: String(version.id),
+        facilities: facilities?.accepted ?? [],
+        stock: stock?.accepted ?? [],
+        duplicatePolicy: body.duplicate_policy as DuplicatePolicy,
+      });
+      await audit(c, org, id, actor, 'real_import.committed', 'data_import_batches', String(batch.id), null, {
+        ...written,
+        rejections: rejections.length,
+      });
+      return { committed: true, rejections, written, batch_id: String(batch.id) };
+    });
+    res.status(outcome.committed ? 201 : 422).json(outcome);
+  });
+
+  // Per-batch undo: only that batch's rows, audit logged.
+  //
+  // inventory_records and facilities deliberately have no RLS DELETE policy
+  // (stock history is append-only for tenants), so the removal runs through the
+  // service connection after an explicit permission check and is scoped by
+  // organisation + project + batch to keep tenants apart.
+  route('post', '/import-batches/:batchId/undo', async (req, res) => {
+    const batchId = uuid.parse(req.params.batchId);
+    // Permission check first, in the caller's scoped session (one connection per
+    // request, so the service-level step must not nest inside it).
+    const target = await scoped(req, async (c) => {
+      const batch = await one(c, 'select project_id from data_import_batches where id=$1', [batchId]);
+      const projectId = String(batch.project_id);
+      const roleRow = await one(c, 'select project_role($1) as role', [projectId]);
+      if (!can(roleRow.role as Role, 'manage'))
+        throw httpError(403, 'Your project role does not permit undoing this import');
+      const org = String(
+        (await one(c, 'select organisation_id from projects where id=$1', [projectId])).organisation_id,
+      );
+      return { projectId, org };
+    });
+    {
+      const { projectId, org } = target;
+      const result = await db.admin(async (tx) => {
+        const fresh = await one(tx, 'select * from data_import_batches where id=$1', [batchId]);
+        if (fresh.undone_at) throw httpError(400, 'This batch was already undone');
+        const stock = await tx.query(
+          `delete from inventory_records
+            where import_batch_id=$1 and project_id=$2 and organisation_id=$3 and data_origin='real'`,
+          [batchId, projectId, org],
+        );
+        const facilities = await tx.query(
+          `delete from facilities f
+            where f.import_batch_id=$1 and f.project_id=$2 and f.organisation_id=$3
+              and f.data_origin='real'
+              and not exists (select 1 from inventory_records i where i.facility_id=f.id)`,
+          [batchId, projectId, org],
+        );
+        await tx.query('update data_import_batches set undone_at=now() where id=$1', [batchId]);
+        const actor = (req as Authed).user.id;
+        await audit(tx, org, projectId, actor, 'real_import.undone', 'data_import_batches', batchId, null, {
+          stock_removed: stock.affectedRows ?? 0,
+          facilities_removed: facilities.affectedRows ?? 0,
+        });
+        return {
+          undone: true,
+          stock_removed: stock.affectedRows ?? 0,
+          facilities_removed: facilities.affectedRows ?? 0,
+        };
+      });
+      res.json(result);
+    }
+  });
+
+  // Manual entry: one facility and/or one stock reading, same validation.
+  route('post', '/projects/:id/manual-entry', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    await permission(req, 'data', id);
+    const body = z
+      .object({
+        facility: z
+          .object({
+            facility_id: z.string().min(1).max(64),
+            facility_name: z.string().min(1).max(200),
+            country: z.string().max(80).optional(),
+            state_or_region: z.string().max(80).optional(),
+            district_or_lga: z.string().max(80).optional(),
+            facility_type: z.string().max(80).optional(),
+          })
+          .optional(),
+        stock: z
+          .object({
+            facility_id: z.string().min(1).max(64),
+            medicine: z.string().min(1).max(120),
+            usable_stock_units: z.number().min(0),
+            avg_daily_consumption: z.number().min(0),
+            as_of_date: date,
+            financing_signal: z.string().max(200).optional(),
+          })
+          .optional(),
+      })
+      .parse(req.body || {});
+    const result = await scoped(req, async (c) => {
+      const { org, actor } = await context(c, id);
+      const userName = (req as Authed).user.full_name;
+      const source = `manual entry (${userName})`;
+      const batch = await insert(c, 'data_import_batches', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        batch_kind: 'manual_entry',
+        data_origin: 'real',
+        file_name: 'manual entry',
+        source,
+        row_counts: { facilities: body.facility ? 1 : 0, stock: body.stock ? 1 : 0 },
+      });
+      const dataset = await insert(c, 'datasets', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        name: `Manual entry ${new Date().toISOString().slice(0, 10)}`,
+        kind: 'inventory',
+        description: 'Single-record manual entry',
+        source,
+        owner: userName,
+        sensitivity: 'Internal',
+        quality_status: 'Validated',
+        lineage: 'Manual entry → validation',
+        data_origin: 'real',
+      });
+      const version = await insert(c, 'dataset_versions', {
+        organisation_id: org,
+        project_id: id,
+        created_by: actor,
+        dataset_id: dataset.id,
+        version: 1,
+        row_count: 1,
+        checksum: `manual-${batch.id}`,
+        notes: `Batch ${batch.id}`,
+        data_origin: 'real',
+      });
+      const written = await writeBatch(c, {
+        organisationId: org,
+        projectId: id,
+        actorId: actor,
+        batchId: String(batch.id),
+        versionId: String(version.id),
+        facilities: body.facility
+          ? [
+              {
+                facility_id: body.facility.facility_id,
+                facility_name: body.facility.facility_name,
+                country: body.facility.country ?? null,
+                state_or_region: body.facility.state_or_region ?? null,
+                district_or_lga: body.facility.district_or_lga ?? null,
+                facility_type: body.facility.facility_type ?? null,
+                catchment_population: null,
+                lat: null,
+                lon: null,
+                source,
+              },
+            ]
+          : [],
+        stock: body.stock
+          ? [
+              {
+                facility_id: body.stock.facility_id,
+                medicine: body.stock.medicine,
+                usable_stock_units: body.stock.usable_stock_units,
+                avg_daily_consumption: body.stock.avg_daily_consumption,
+                coverage_days:
+                  body.stock.avg_daily_consumption > 0
+                    ? Math.round(
+                        (body.stock.usable_stock_units / body.stock.avg_daily_consumption) * 100,
+                      ) / 100
+                    : null,
+                as_of_date: body.stock.as_of_date,
+                financing_signal: body.stock.financing_signal ?? null,
+                reporting_period: null,
+                source,
+              },
+            ]
+          : [],
+        duplicatePolicy: 'reject',
+      });
+      await audit(c, org, id, actor, 'real_import.manual_entry', 'data_import_batches', String(batch.id), null, written);
+      return { ...written, batch_id: String(batch.id) };
+    });
+    res.status(201).json(result);
   });
 
   // Automated recurring backups endpoints
