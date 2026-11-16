@@ -2043,12 +2043,24 @@ export function createApp(db: Database) {
                 : ['23505', '23514', '23503'].includes(error.code || '')
                   ? 400
                   : 500);
+      // Surface the PostgreSQL SQLSTATE and, for role/permission failures, the
+      // role name. 42501 on 'set local role afri_app' means the connecting
+      // database user is not a member of afri_app — see migration
+      // 009_afri_app_role_grants.sql. Keep the response body generic; the
+      // detail belongs in logs.
+      const failingRole = roleFromError(error);
       if (status >= 500)
         console.error(
           JSON.stringify({
             event: 'request_failed',
             path: req.path,
             code: error.code || 'INTERNAL',
+            ...(failingRole ? { role: failingRole } : {}),
+            ...(error.code === '42501'
+              ? {
+                  hint: 'PostgreSQL 42501: the connecting user cannot assume this role. Apply supabase/migrations/009_afri_app_role_grants.sql (grant afri_app to the connecting user with set true).',
+                }
+              : {}),
             message: error.message.slice(0, 250),
           }),
         );
@@ -2070,6 +2082,16 @@ function csvSafe(value: unknown) {
 }
 function httpError(status: number, message: string) {
   return Object.assign(new Error(message), { status });
+}
+/**
+ * Extract the role name from a PostgreSQL permission error, e.g.
+ *   permission denied to set role "afri_app"
+ *   must be member of role "afri_app"
+ * Returns null when the error is unrelated to roles.
+ */
+function roleFromError(error: Error): string | null {
+  const match = /role "([^"]{1,63})"/.exec(error.message || '');
+  return match ? match[1] : null;
 }
 function checkZipSize(buffer: Buffer) {
   let end = -1;
