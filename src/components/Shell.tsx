@@ -28,6 +28,7 @@ import {
   TriangleAlert,
   Command,
   Leaf,
+  Menu,
   X,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
@@ -237,6 +238,14 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="app-main">
         <header className="global-header">
+          <button
+            className="icon-btn mobile-nav-toggle"
+            aria-label="Open navigation"
+            aria-expanded={mobile}
+            onClick={() => setMobile(true)}
+          >
+            <Menu size={18} />
+          </button>
           <div className="header-breadcrumb">
             <Building2 size={15} className="header-org-icon" />
             <span className="header-org-name">{isDemo ? 'Demo organisation' : 'Organisation'}</span>

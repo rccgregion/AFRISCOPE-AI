@@ -15,7 +15,7 @@ import { Learning } from './features/Learning';
 import { Governance } from './features/Governance';
 import { Reports } from './features/Reports';
 import { Projects, Administration, SettingsPage } from './features/Administration';
-import { Guide } from './features/Public';
+import { Guide, Landing } from './features/Public';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import './styles.css';
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string }> {
@@ -139,7 +139,9 @@ function App() {
       <BrowserRouter>
         <StoreProvider>
           <Routes>
-            <Route path="/welcome" element={<Navigate to="/" replace />} />
+            {/* The public entry page exists and is routable: it used to redirect
+                straight into the workspace, leaving the landing screen dead. */}
+            <Route path="/welcome" element={<Landing />} />
             <Route path="/sign-in" element={<Navigate to="/" replace />} />
             <Route path="/accept-invite" element={<Navigate to="/" replace />} />
             <Route path="/privacy" element={<Guide />} />

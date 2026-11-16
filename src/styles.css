@@ -5122,3 +5122,24 @@ td strong {
   padding: 1px 4px;
   border-radius: 4px;
 }
+
+/* Part 4.7 — below 1024px the sidebar is off-canvas, and there was no control to
+   open it: navigation was unreachable on a phone. The toggle is hidden on
+   desktop, where the sidebar is permanent. */
+.mobile-nav-toggle {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: var(--deep-surface);
+  }
+}
