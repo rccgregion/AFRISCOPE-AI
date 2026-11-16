@@ -86,6 +86,21 @@ describe('authenticated API and database isolation', () => {
     await request(app).get(path('/health')).expect(200);
     await request(app).get(path('/workspace')).expect(401);
   });
+  it('verbose health reports the role switch and seed counts without secrets', async () => {
+    const res = await request(app).get(path('/health?verbose=1')).expect(200);
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      dbReachable: true,
+      roleSwitchOk: true,
+      sessionSecretSet: true,
+    });
+    expect(res.body.seedRowCounts.projects).toBeGreaterThan(0);
+    expect(res.body.seedRowCounts.facilities).toBeGreaterThan(0);
+    // Diagnostic output must never leak credentials or the secret value.
+    const body = JSON.stringify(res.body);
+    expect(body).not.toMatch(/postgres:\/\//);
+    expect(body).not.toContain(process.env.SESSION_SECRET as string);
+  });
   it('rejects unsafe requests without CSRF header', async () => {
     await agents.programme_manager.post(path('/auth/logout')).send({}).expect(403);
   });
