@@ -23,9 +23,11 @@ let db: Database, app: Express;
 const agents: Record<string, ReturnType<typeof request.agent>> = {};
 const path = (p: string) => '/api' + p;
 const post = (role: string, p: string, body: unknown) =>
-  agents[role].post(path(p)).set('X-AfriScope-Request', '1').send(body as object);
-const get = (role: string, p: string) =>
-  agents[role].get(path(p)).set('X-AfriScope-Request', '1');
+  agents[role]
+    .post(path(p))
+    .set('X-AfriScope-Request', '1')
+    .send(body as object);
+const get = (role: string, p: string) => agents[role].get(path(p)).set('X-AfriScope-Request', '1');
 
 let projectId = '';
 let sampleProjectId = '';
@@ -112,7 +114,10 @@ describe('sample data marking', () => {
   });
 
   it('serves the sample label through the origin summary endpoint', async () => {
-    const res = await get('organisation_admin', `/projects/${sampleProjectId}/origin-summary`).expect(200);
+    const res = await get(
+      'organisation_admin',
+      `/projects/${sampleProjectId}/origin-summary`,
+    ).expect(200);
     expect(res.body.sample_label).toBe(SAMPLE_LABEL);
     expect(res.body.counts.facilities.sample).toBeGreaterThan(0);
     expect(res.body.counts.facilities.real).toBeGreaterThan(0);
@@ -212,7 +217,8 @@ describe('real data import validation', () => {
       duplicate_policy: 'reject',
       file_name: 'ng-test.csv',
     });
-    if (commit.status !== 201) console.log('COMMIT ERROR', commit.status, JSON.stringify(commit.body));
+    if (commit.status !== 201)
+      console.log('COMMIT ERROR', commit.status, JSON.stringify(commit.body));
     expect(commit.status).toBe(201);
     expect(commit.body.committed).toBe(true);
     expect(commit.body.written.facilitiesWritten).toBe(2);
@@ -273,16 +279,15 @@ describe('clear and restore sample data', () => {
     const org = orgId;
     const result = await clearSampleData(db, org, projectId, ws.body.user.id, 'yes', null);
     expect(result.cleared).toBe(false);
-    const still = await q(
-      `select count(*)::int as n from facilities where data_origin='sample'`,
-    );
+    const still = await q(`select count(*)::int as n from facilities where data_origin='sample'`);
     expect(still.rows[0].n).toBeGreaterThan(0);
   });
 
   it('dry-run reports per-table sample/real counts before anything is deleted', async () => {
-    const res = await get('organisation_admin', `/projects/${projectId}/sample-data/dry-run`).expect(
-      200,
-    );
+    const res = await get(
+      'organisation_admin',
+      `/projects/${projectId}/sample-data/dry-run`,
+    ).expect(200);
     expect(res.body.confirmation_phrase).toBe(CLEAR_CONFIRMATION);
     expect(res.body.canClear).toBe(true);
     expect(res.body.counts.facilities.sample).toBeGreaterThan(0);
@@ -323,7 +328,11 @@ describe('clear and restore sample data', () => {
     expect(after.rows[0].fr).toBe(1);
 
     // Restore is idempotent and returns the original counts.
-    const restore = await post('organisation_admin', `/projects/${projectId}/sample-data/restore`, {});
+    const restore = await post(
+      'organisation_admin',
+      `/projects/${projectId}/sample-data/restore`,
+      {},
+    );
     expect(restore.status).toBe(200);
     {
       const restored = await q(
@@ -336,9 +345,7 @@ describe('clear and restore sample data', () => {
   });
 
   it('aborts the clear when a real row references a sample row', async () => {
-    const sampleFacility = await q(
-      `select id from facilities where data_origin='sample' limit 1`,
-    );
+    const sampleFacility = await q(`select id from facilities where data_origin='sample' limit 1`);
     const ids = await q(
       `select id, organisation_id, project_id, version_id from inventory_records where data_origin='sample' limit 1`,
     );
@@ -359,11 +366,16 @@ describe('clear and restore sample data', () => {
     const dry = await dryRunClear(db, org);
     expect(dry.canClear).toBe(false);
     expect(dry.blockers.length).toBeGreaterThan(0);
-    const attempt = await clearSampleData(db, org, projectId, ws.body.user.id, CLEAR_CONFIRMATION, null);
-    expect(attempt.cleared).toBe(false);
-    const still = await q(
-      `select count(*)::int as n from facilities where data_origin='sample'`,
+    const attempt = await clearSampleData(
+      db,
+      org,
+      projectId,
+      ws.body.user.id,
+      CLEAR_CONFIRMATION,
+      null,
     );
+    expect(attempt.cleared).toBe(false);
+    const still = await q(`select count(*)::int as n from facilities where data_origin='sample'`);
     expect(still.rows[0].n).toBeGreaterThan(0);
     await q(`delete from inventory_records where source_row=999 and data_origin='real'`);
   });
@@ -377,15 +389,21 @@ describe('experiment lab prompts', () => {
       (p: { group: string }) => p.group !== 'Context prompts (no stock data needed)',
     );
     expect(main.length).toBe(7);
-    expect(res.body.prompts.filter((p: { group: string }) => p.group.startsWith('Context')).length).toBe(4);
+    expect(
+      res.body.prompts.filter((p: { group: string }) => p.group.startsWith('Context')).length,
+    ).toBe(4);
     expect(res.body.behaviour_rules).toEqual(BEHAVIOUR_RULES);
     for (const p of SAVED_PROMPTS) expect(p.prompt.length).toBeGreaterThan(40);
   });
 
   it('answers from the data in scope and states the scope used', async () => {
-    const res = await post('organisation_admin', `/projects/${sampleProjectId}/prompts/stockout-prioritisation/run`, {
-      scope: 'sample',
-    }).expect(200);
+    const res = await post(
+      'organisation_admin',
+      `/projects/${sampleProjectId}/prompts/stockout-prioritisation/run`,
+      {
+        scope: 'sample',
+      },
+    ).expect(200);
     expect(res.body.status).toBe('answered');
     expect(res.body.scope_statement).toMatch(/Sample data only/);
     expect(res.body.uses_sample_data).toBe(true);
@@ -396,9 +414,13 @@ describe('experiment lab prompts', () => {
   });
 
   it('says exactly what is missing instead of inventing real data', async () => {
-    const res = await post('organisation_admin', `/projects/${sampleProjectId}/prompts/stockout-prioritisation/run`, {
-      scope: 'real',
-    }).expect(200);
+    const res = await post(
+      'organisation_admin',
+      `/projects/${sampleProjectId}/prompts/stockout-prioritisation/run`,
+      {
+        scope: 'real',
+      },
+    ).expect(200);
     expect(res.body.status).toBe('insufficient_data');
     expect(res.body.missing.length).toBeGreaterThan(0);
     expect(res.body.missing.join(' ')).toMatch(/real/i);
@@ -408,15 +430,23 @@ describe('experiment lab prompts', () => {
   });
 
   it('flags the Horizon 1000 claim as unverified in the answer', async () => {
-    const res = await post('organisation_admin', `/projects/${sampleProjectId}/prompts/horizon-1000-alignment/run`, {
-      scope: 'sample',
-    }).expect(200);
+    const res = await post(
+      'organisation_admin',
+      `/projects/${sampleProjectId}/prompts/horizon-1000-alignment/run`,
+      {
+        scope: 'sample',
+      },
+    ).expect(200);
     expect(res.body.unverified_claims.length).toBeGreaterThan(0);
     if (res.body.status === 'answered') expect(res.body.answer).toMatch(/UNVERIFIED/);
   });
 
   it('labels the Horizon 1000 claims as unverified', () => {
-    for (const id of ['horizon-1000-alignment', 'south-africa-readiness', 'context-horizon-1000-rwanda']) {
+    for (const id of [
+      'horizon-1000-alignment',
+      'south-africa-readiness',
+      'context-horizon-1000-rwanda',
+    ]) {
       const p = SAVED_PROMPTS.find((x) => x.id === id)!;
       expect(p.unverified_claims?.length).toBeGreaterThan(0);
       expect(p.unverified_claims!.join(' ')).toMatch(/UNVERIFIED/);

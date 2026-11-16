@@ -17,7 +17,12 @@ test('public entry opens a real synthetic workspace', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'See the risks. Shape the next move.',
   );
-  await expect(page.getByText('Synthetic demonstration', { exact: true })).toBeVisible();
+  // The banner names the data state, which is the honest label (Part 1.2); the
+  // synthetic nature of the rows is stated in the same line. Scoped to the
+  // banner because the header shows the same state in its own pill.
+  const banner = page.locator('.demo-banner');
+  await expect(banner.getByText('Demo data', { exact: true })).toBeVisible();
+  await expect(banner.getByText(/Sample rows are synthetic/)).toBeVisible();
   await expect(page.getByRole('link', { name: /Facilities monitored/ })).toBeVisible();
 });
 test('all module routes render without page errors', async ({ page }) => {
@@ -34,12 +39,22 @@ test('all module routes render without page errors', async ({ page }) => {
     ['/governance', 'Accountability, by design.'],
     ['/reports', 'Evidence that travels with the decision.'],
     ['/projects', 'Organise around the decision.'],
-    ['/administration', 'The right access. Clear accountability.'],
     ['/settings', 'A workspace you can trust.'],
   ]) {
     await page.goto(route);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
   }
+  // Administration is role-specific: a programme manager sees the reason, not
+  // the administrator page (Part 3.1), so it is checked per role below.
+  await page.goto('/administration');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Administrator access required');
+  await expect(page.getByText('Project membership')).toHaveCount(0);
+  await login(page, 'organisation_admin');
+  await page.goto('/administration');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'The right access. Clear accountability.',
+  );
+  await expect(page.getByRole('heading', { name: 'Data origin and sample data' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 test('stock filters, source detail, and CSV export work', async ({ page }) => {
@@ -193,6 +208,16 @@ test('key workspace views pass automated WCAG A/AA checks', async ({ page }) => 
     const result = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
       .analyze();
-    expect(result.violations).toEqual([]);
+    // Report the rule ids and the offending selectors, which is what makes a
+    // failure actionable from the CI annotation.
+    expect(
+      result.violations.map(
+        (v) =>
+          `${v.id} (${v.nodes.length}): ${v.nodes
+            .map((n) => n.target.join(' '))
+            .slice(0, 3)
+            .join(' | ')}`,
+      ),
+    ).toEqual([]);
   }
 });

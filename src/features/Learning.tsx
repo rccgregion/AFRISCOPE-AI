@@ -9,6 +9,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useStore, useAction, type Row } from '../lib/store';
+import { displayText } from '../lib/text';
 import { api, download } from '../lib/api';
 import { PageHeader, Button, Status, Badge, Notice, Modal, KeyValue } from '../components/ui';
 import { RecordForm } from '../components/workflow';
@@ -86,8 +87,8 @@ export function Learning() {
                   )}
                 </div>
                 <span className="eyebrow">{m.pathway}</span>
-                <h2>{m.title}</h2>
-                <p>{m.description}</p>
+                <h2>{displayText(m.title)}</h2>
+                <p>{displayText(m.description)}</p>
                 <footer>
                   <span>
                     <Clock size={14} />
@@ -171,13 +172,13 @@ function Lesson({
         <h3>Learning objectives</h3>
         <ul className="detail-list">
           {c.objectives?.map((x: string) => (
-            <li key={x}>{x}</li>
+            <li key={x}>{displayText(x)}</li>
           ))}
         </ul>
         {c.sections?.map((s: Row) => (
           <section key={s.title}>
-            <h3>{s.title}</h3>
-            <p>{s.body}</p>
+            <h3>{displayText(s.title)}</h3>
+            <p>{displayText(s.body)}</p>
           </section>
         ))}
         <section className="exercise-box">

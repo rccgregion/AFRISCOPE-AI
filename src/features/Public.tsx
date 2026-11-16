@@ -324,35 +324,35 @@ export function Guide() {
           {[
             {
               title: '1. Choose a project',
-              text: 'Use the project selector in the header. Medicine, finance, and intervention planning each have their own connected evidence and review records.',
+              text: 'Use the project selector in the header. Each project carries its own data, analysis, evidence and review records. Projects in the demonstration organisation hold synthetic records only.',
             },
             {
-              title: '2. Inspect the data',
-              text: 'Open Data Intelligence. Review source versions, the quality report, and the data dictionary. Upload the separate defect fixture to see rejected records and remediation.',
+              title: '2. Read the labels before the numbers',
+              text: 'Every module states what its data is. The top bar shows the data state (Demo data, Real data loaded, or Real and sample data) beside a separate realtime indicator. Sample facilities are named "[Sample] ...", sample alert and transfer text is prefixed "Simulated:", and every exported CSV carries a data_origin column.',
             },
             {
-              title: '3. Run an analysis',
-              text: 'Programme Operations recalculates stock coverage or financial bottlenecks. Data Intelligence runs a time-aware forecast comparison. Results are persisted as evidence.',
+              title: '3. Filter by origin',
+              text: 'Data Intelligence and Programme Operations have an origin filter (All / Real only / Sample only). Filtering changes only what you see: the per-origin counts are computed once on the server, so the header, Data Intelligence, Operations, Finance and Alerts always agree.',
             },
             {
-              title: '4. Inspect a recommendation',
-              text: 'Open the Approvals tab in Operations. Review the original action, source versions, assumptions, and limitations. Submit your own proposal if needed.',
+              title: '4. Clear the sample rows before real use',
+              text: 'An organisation administrator opens Administration -> Data origin and sample data, runs "Preview what would be removed" (a dry run), then types the confirmation phrase. Only rows tagged sample are deleted; real rows and the audit history stay. Every other role sees the control disabled with the reason stated.',
             },
             {
-              title: '5. Switch to a reviewer',
-              text: 'Use the persona selector in the top bar or Settings to switch roles (e.g. to Reviewer). The proposal owner cannot approve their own recommendation.',
+              title: '5. Import real data',
+              text: 'Data Intelligence -> Import dataset. Download a template first if you need the column names. Preview, map columns, import: accepted and rejected rows are counted, and rejected rows are reported with their reason rather than silently dropped.',
             },
             {
-              title: '6. Record a decision',
-              text: 'An authorised reviewer can approve, reject, or defer with a reason. Approval never moves stock or money. Operators can record implementation and outcomes separately.',
+              title: '6. Run an analysis and read the recommendation',
+              text: 'Programme Operations recalculates stock coverage or financial bottlenecks against the project reference date (shown as "Data as of ..."), and Data Intelligence runs a time-aware forecast comparison. Results are saved as evidence. Operations -> Approvals shows the original action, source versions, assumptions and limitations.',
             },
             {
-              title: '7. Compare interventions',
-              text: 'Open Intervention Planner. Change the budget, equity minimum, delivery window, or geographic requirements. The exact solver explains feasible and infeasible results.',
+              title: '7. Switch role and record a decision',
+              text: 'Switch persona from Overview (the selector under the mandate card). An independent reviewer can approve, reject or defer a proposal with a reason, and the proposal owner cannot approve their own. Approval never moves stock or money.',
             },
             {
               title: '8. Export the evidence',
-              text: 'Reports contain saved computed results and source references. Download Markdown for a report or CSV for records, quality issues, and audit history.',
+              text: 'Reports contain saved computed results and source references, and claim the evidence is ready only when it exists. Downloads are Markdown for a report and CSV for records, quality issues and audit history, and each CSV identifies the origin of every row.',
             },
           ].map((s) => (
             <section key={s.title}>
@@ -368,7 +368,7 @@ export function Guide() {
         </p>
         <a
           className="btn btn-primary"
-          href="https://github.com/rccgregion/AFRISCOPE-AI/tree/arena/bb428b97-afriscope-ai/docs"
+          href="https://github.com/rccgregion/AFRISCOPE-AI/tree/main/docs"
           target="_blank"
           rel="noreferrer"
         >

@@ -5,7 +5,14 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from 'node:crypto';
 import { z } from 'zod';
-import { can, ROLES, DEMO_ORG, AS_OF, type Role, type RecommendationState } from '../shared/domain.js';
+import {
+  can,
+  ROLES,
+  DEMO_ORG,
+  AS_OF,
+  type Role,
+  type RecommendationState,
+} from '../shared/domain.js';
 import { transition, optimise, type Constraints } from '../shared/analytics.js';
 import { tables } from './schema.mjs';
 import { audit, one, type Database, type Client } from './db.js';
@@ -39,7 +46,7 @@ import {
 import { explain } from './assistant.js';
 import { realtime } from './realtime.js';
 import { backupService } from './backup.js';
-import { importSamplePack, SAMPLE_LABEL, SIMULATED_ALERT_PREFIX } from './sample-pack.js';
+import { importSamplePack } from './sample-pack.js';
 import {
   dryRunClear,
   clearSampleData,
@@ -58,7 +65,13 @@ import {
 } from './real-import.js';
 import { SAVED_PROMPTS, BEHAVIOUR_RULES, PROMPT_SCOPE_LABEL } from './prompts.js';
 import { runPrompt } from './prompt-runner.js';
-import { listConnectors, createConnector, syncConnector } from './connectors.js';
+import {
+  listConnectors,
+  createConnector,
+  configureConnector,
+  syncConnector,
+} from './connectors.js';
+import { originSummary, dataStateLabel } from './origin.js';
 import { DISTRICT_BOUNDARIES, FACILITY_COORDINATES } from '../shared/gis.js';
 
 type Authed = Request & {
@@ -141,10 +154,9 @@ export function createApp(db: Database) {
     if (typeof raw !== 'string' || !raw || raw.length > 100) return null;
     const record = (
       await db.admin((c) =>
-        c.query(
-          'select user_id from auth_sessions where token_hash=$1 and expires_at>now()',
-          [hash(raw)],
-        ),
+        c.query('select user_id from auth_sessions where token_hash=$1 and expires_at>now()', [
+          hash(raw),
+        ]),
       )
     ).rows[0];
     return record ? String(record.user_id) : null;
@@ -157,11 +169,19 @@ export function createApp(db: Database) {
     if (process.env.DEMO_MODE !== undefined) return process.env.DEMO_MODE === 'true';
     return process.env.DEMO_ENABLED !== 'false';
   };
-  // Basic per-IP rate limiting for unauthenticated auth endpoints
-  // (~10 attempts/min). In-memory per app instance; on serverless each
-  // instance enforces its own budget, which is sufficient abuse friction
-  // for demo/auto auth.
+  // Basic per-IP rate limiting for unauthenticated auth endpoints.
+  //
+  // Only *failed* attempts consume the budget. Counting successes locked real
+  // users out: every page load calls /auth/auto, so ten page loads in a minute
+  // returned 429 and the workspace never loaded (the browser suite hit this).
+  // Successful sign-ins are already bounded by the session cookie, and
+  // /auth/login has its own per-identifier throttle in auth_throttle.
+  //
+  // In-memory per app instance; on serverless each instance enforces its own
+  // budget, which is sufficient abuse friction for demo/auto auth.
   const authAttempts = new Map<string, number[]>();
+  const AUTH_WINDOW_MS = 60_000;
+  const AUTH_MAX_FAILURES = 10;
   const authRateLimit = (req: Request, res: Response, next: NextFunction) => {
     const forwarded = req.headers['x-forwarded-for'];
     const ip =
@@ -169,16 +189,20 @@ export function createApp(db: Database) {
       (typeof forwarded === 'string' ? forwarded.split(',')[0]?.trim() : undefined) ||
       'unknown';
     const now = Date.now();
-    const windowMs = 60_000;
-    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < windowMs);
-    if (recent.length >= 10) {
+    const recent = (authAttempts.get(ip) || []).filter((t) => now - t < AUTH_WINDOW_MS);
+    if (recent.length >= AUTH_MAX_FAILURES) {
       res
         .status(429)
-        .json({ error: 'Too many authentication attempts. Try again in a minute.' });
+        .json({ error: 'Too many failed authentication attempts. Try again in a minute.' });
       return;
     }
-    recent.push(now);
     authAttempts.set(ip, recent);
+    res.on('finish', () => {
+      if (res.statusCode < 400) return;
+      const stamps = (authAttempts.get(ip) || []).filter((t) => Date.now() - t < AUTH_WINDOW_MS);
+      stamps.push(Date.now());
+      authAttempts.set(ip, stamps);
+    });
     next();
   };
   // Vercel rewrite compatibility: the /api/(.*) rewrite targets the single
@@ -401,9 +425,13 @@ export function createApp(db: Database) {
         });
         return;
       }
+      const database = db.info();
       res.json({
         status: 'ok',
-        database: 'PostgreSQL / PGlite or configured PostgreSQL',
+        // Name the database actually in use rather than a generic label (Part
+        // 5.5). No host credentials, no connection string.
+        database: database.label,
+        database_info: database,
         supabase: await supabaseStatus(),
         llm:
           process.env.LLM_EXTERNAL_ENABLED === 'true' && !!process.env.LLM_API_KEY
@@ -652,6 +680,19 @@ export function createApp(db: Database) {
             [id],
           )
         ).rows;
+      // Shared origin counters, so every module reads the same numbers and the
+      // top bar can describe the data truthfully ("Demo data" / "Real data loaded").
+      const origin = await originSummary(c, id);
+      output.origin_summary = origin;
+      output.data_state = dataStateLabel(origin);
+      // Operational reference date ("data as of"), configurable per project in
+      // Administration -> rule configuration (settings.as_of).
+      output.reference_date = String(
+        (
+          (output.project as Record<string, unknown> | undefined)?.settings as
+            Record<string, unknown> | undefined
+        )?.as_of || AS_OF,
+      ).slice(0, 10);
       output.my_role = (await one(c, 'select project_role($1) as role', [id])).role;
       output.members = (
         await c.query(
@@ -1945,19 +1986,31 @@ export function createApp(db: Database) {
       message = `Proposal: ${String(record.title || 'Prioritisation review')}`;
     }
 
+    // DEMO ONLY. This endpoint never writes rows: it re-broadcasts a payload the
+    // caller supplied, and every event is labelled so it cannot be mistaken for
+    // a database change. Real ingest goes through the validated import flow.
     realtime.broadcast({
       id: `wh-${Date.now()}-${randomBytes(4).toString('hex')}`,
       type: `supabase:${table}:${type.toLowerCase()}`,
       timestamp: new Date().toISOString(),
       orgId: record.organisation_id ? String(record.organisation_id) : undefined,
       projectId: record.project_id ? String(record.project_id) : undefined,
-      title,
-      message,
+      title: `Demo only · ${title}`,
+      message: `${message} (demonstration event; nothing was written to the database)`,
       severity,
-      data: { table, type, record },
+      data: { table, type, record, demo: true, rows_written: 0, data_origin: 'demo' },
     });
 
-    res.json({ ok: true, received: true, action: 'broadcast', table, type });
+    res.json({
+      ok: true,
+      received: true,
+      action: 'broadcast',
+      table,
+      type,
+      demo: true,
+      rows_written: 0,
+      note: 'Demonstration event only. Nothing was written to project data.',
+    });
   });
 
   // ---------------------------------------------------------------------------
@@ -2012,27 +2065,7 @@ export function createApp(db: Database) {
     await permission(req, 'read', id);
     res.json(
       await scoped(req, async (c) => {
-        const one_ = async (table: string) => {
-          const row = (
-            await c.query(
-              `select count(*) filter (where data_origin='sample')::int as sample,
-                      count(*) filter (where data_origin='real')::int as real
-                 from ${table} where project_id=$1`,
-              [id],
-            )
-          ).rows[0] as { sample: number; real: number };
-          return { sample: Number(row.sample), real: Number(row.real) };
-        };
-        const tables = [
-          'facilities',
-          'inventory_records',
-          'consumption_records',
-          'operational_alerts',
-          'recommendations',
-          'funding_releases',
-        ];
-        const counts: Record<string, { sample: number; real: number }> = {};
-        for (const t of tables) counts[t] = await one_(t);
+        const summary = await originSummary(c, id);
         const alerts = (
           await c.query(
             `select id, title, severity, data_origin from operational_alerts
@@ -2042,15 +2075,16 @@ export function createApp(db: Database) {
         ).rows.map((r) => ({
           ...r,
           simulated: String(r.data_origin) === 'sample',
-          label: String(r.data_origin) === 'sample' ? SAMPLE_LABEL : null,
-          title_prefix: String(r.data_origin) === 'sample' ? SIMULATED_ALERT_PREFIX : null,
+          label: String(r.data_origin) === 'sample' ? summary.sample_label : null,
+          title_prefix: String(r.data_origin) === 'sample' ? summary.simulated_prefix : null,
         }));
         return {
           project_id: id,
-          counts,
-          mixed: tables.some((t) => counts[t].sample > 0 && counts[t].real > 0),
-          sample_label: SAMPLE_LABEL,
-          simulated_prefix: SIMULATED_ALERT_PREFIX,
+          counts: summary,
+          data_state: dataStateLabel(summary),
+          mixed: summary.has_sample && summary.has_real,
+          sample_label: summary.sample_label,
+          simulated_prefix: summary.simulated_prefix,
           alerts,
         };
       }),
@@ -2087,25 +2121,32 @@ export function createApp(db: Database) {
 
   // Templates are static skeletons with placeholder values only, so they are
   // served without a session: a plain <a download> link must work.
-  route('get', '/import-templates/:kind', async (req, res) => {
-    const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
-    const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
-    if (format === 'json') {
-      res.json({ kind, fields: DATA_DICTIONARY[kind] });
-      return;
-    }
-    const csv = kind === 'facilities' ? facilityTemplateCsv() : stockTemplateCsv();
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
-    res.send(csv);
-  }, false);
+  route(
+    'get',
+    '/import-templates/:kind',
+    async (req, res) => {
+      const kind = z.enum(['facilities', 'stock']).parse(req.params.kind);
+      const format = z.enum(['csv', 'json']).parse(String(req.query.format || 'csv'));
+      if (format === 'json') {
+        res.json({ kind, fields: DATA_DICTIONARY[kind] });
+        return;
+      }
+      const csv = kind === 'facilities' ? facilityTemplateCsv() : stockTemplateCsv();
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${kind}-template.csv"`);
+      res.send(csv);
+    },
+    false,
+  );
 
   route('get', '/projects/:id/sample-data/dry-run', async (req, res) => {
     const id = uuid.parse(req.params.id);
     await permission(req, 'manage', id);
     if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
     const org = await scoped(req, async (c) =>
-      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+      String(
+        (await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id,
+      ),
     );
     const admin = await isOrgAdmin(req, org);
     if (!admin) throw httpError(403, 'Administrator role required');
@@ -2118,7 +2159,9 @@ export function createApp(db: Database) {
     await permission(req, 'manage', id);
     if (!sampleControlsEnabled()) throw httpError(403, 'Sample data controls are disabled');
     const org = await scoped(req, async (c) =>
-      String((await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id),
+      String(
+        (await one(c, 'select organisation_id from projects where id=$1', [id])).organisation_id,
+      ),
     );
     if (!(await isOrgAdmin(req, org))) throw httpError(403, 'Administrator role required');
     const body = z
@@ -2174,8 +2217,8 @@ export function createApp(db: Database) {
     if (!body.facilities_csv && !body.stock_csv)
       throw httpError(400, 'Provide facilities_csv and/or stock_csv');
     const existing = await scoped(req, async (c) =>
-      (await c.query('select external_id from facilities where project_id=$1', [id])).rows.map((r) =>
-        String(r.external_id),
+      (await c.query('select external_id from facilities where project_id=$1', [id])).rows.map(
+        (r) => String(r.external_id),
       ),
     );
     const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
@@ -2221,8 +2264,9 @@ export function createApp(db: Database) {
 
     const outcome = await scoped(req, async (c) => {
       const { org, actor } = await context(c, id);
-      const existing = (await c.query('select external_id from facilities where project_id=$1', [id]))
-        .rows.map((r) => String(r.external_id));
+      const existing = (
+        await c.query('select external_id from facilities where project_id=$1', [id])
+      ).rows.map((r) => String(r.external_id));
       const facilities = body.facilities_csv ? validateFacilitiesCsv(body.facilities_csv) : null;
       const knownIds = new Set([
         ...existing,
@@ -2283,10 +2327,20 @@ export function createApp(db: Database) {
         stock: stock?.accepted ?? [],
         duplicatePolicy: body.duplicate_policy as DuplicatePolicy,
       });
-      await audit(c, org, id, actor, 'real_import.committed', 'data_import_batches', String(batch.id), null, {
-        ...written,
-        rejections: rejections.length,
-      });
+      await audit(
+        c,
+        org,
+        id,
+        actor,
+        'real_import.committed',
+        'data_import_batches',
+        String(batch.id),
+        null,
+        {
+          ...written,
+          rejections: rejections.length,
+        },
+      );
       return { committed: true, rejections, written, batch_id: String(batch.id) };
     });
     res.status(outcome.committed ? 201 : 422).json(outcome);
@@ -2303,13 +2357,16 @@ export function createApp(db: Database) {
     // Permission check first, in the caller's scoped session (one connection per
     // request, so the service-level step must not nest inside it).
     const target = await scoped(req, async (c) => {
-      const batch = await one(c, 'select project_id from data_import_batches where id=$1', [batchId]);
+      const batch = await one(c, 'select project_id from data_import_batches where id=$1', [
+        batchId,
+      ]);
       const projectId = String(batch.project_id);
       const roleRow = await one(c, 'select project_role($1) as role', [projectId]);
       if (!can(roleRow.role as Role, 'manage'))
         throw httpError(403, 'Your project role does not permit undoing this import');
       const org = String(
-        (await one(c, 'select organisation_id from projects where id=$1', [projectId])).organisation_id,
+        (await one(c, 'select organisation_id from projects where id=$1', [projectId]))
+          .organisation_id,
       );
       return { projectId, org };
     });
@@ -2332,10 +2389,20 @@ export function createApp(db: Database) {
         );
         await tx.query('update data_import_batches set undone_at=now() where id=$1', [batchId]);
         const actor = (req as Authed).user.id;
-        await audit(tx, org, projectId, actor, 'real_import.undone', 'data_import_batches', batchId, null, {
-          stock_removed: stock.affectedRows ?? 0,
-          facilities_removed: facilities.affectedRows ?? 0,
-        });
+        await audit(
+          tx,
+          org,
+          projectId,
+          actor,
+          'real_import.undone',
+          'data_import_batches',
+          batchId,
+          null,
+          {
+            stock_removed: stock.affectedRows ?? 0,
+            facilities_removed: facilities.affectedRows ?? 0,
+          },
+        );
         return {
           undone: true,
           stock_removed: stock.affectedRows ?? 0,
@@ -2457,7 +2524,17 @@ export function createApp(db: Database) {
           : [],
         duplicatePolicy: 'reject',
       });
-      await audit(c, org, id, actor, 'real_import.manual_entry', 'data_import_batches', String(batch.id), null, written);
+      await audit(
+        c,
+        org,
+        id,
+        actor,
+        'real_import.manual_entry',
+        'data_import_batches',
+        String(batch.id),
+        null,
+        written,
+      );
       return { ...written, batch_id: String(batch.id) };
     });
     res.status(201).json(result);
@@ -2465,8 +2542,16 @@ export function createApp(db: Database) {
 
   // Automated recurring backups endpoints
   route('get', '/backups', async (_req, res) => {
-    const list = await backupService.listBackups(db);
-    res.json({ backups: list, recurring_interval_hours: 6 });
+    const [list, scheduler] = await Promise.all([
+      backupService.listBackups(db),
+      backupService.status(db),
+    ]);
+    res.json({
+      backups: list,
+      scheduler,
+      // Legacy field kept for older clients; it now reflects real state.
+      recurring_interval_hours: scheduler.configured ? scheduler.interval_hours : null,
+    });
   });
 
   route('post', '/backups', async (req, res) => {
@@ -2475,19 +2560,19 @@ export function createApp(db: Database) {
     res.status(201).json(backup);
   });
 
-  app.get('/api/backups/:filename/download', auth, (req, res, next) => {
-    try {
+  app.get(
+    '/api/backups/:filename/download',
+    auth,
+    asyncRoute(async (req, res) => {
       const param = req.params.filename;
       const filename = Array.isArray(param) ? param[0] : param;
       if (!filename) throw httpError(400, 'Filename required');
-      const buf = backupService.getBackupFile(filename);
+      const buf = await backupService.getBackupFile(db, filename);
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(buf);
-    } catch (err) {
-      next(err);
-    }
-  });
+    }),
+  );
 
   // Live Data Connectors
   route('get', '/projects/:id/connectors', async (req, res) => {
@@ -2516,6 +2601,32 @@ export function createApp(db: Database) {
     const connectorId = uuid.parse(req.params.connectorId);
     await permission(req, 'manage', id);
     const result = await syncConnector(db, connectorId, id);
+    // 409 for "nothing to do", 502 for "the endpoint failed". Never 200: a
+    // successful-looking status must mean a real request really succeeded.
+    const status = result.status === 'ok' ? 200 : result.status === 'error' ? 502 : 409;
+    res.status(status).json(result);
+  });
+
+  route('patch', '/projects/:id/connectors/:connectorId', async (req, res) => {
+    const id = uuid.parse(req.params.id);
+    const connectorId = uuid.parse(req.params.connectorId);
+    await permission(req, 'manage', id);
+    const input = z
+      .object({
+        endpoint_url: z.string().max(500).nullable().default(null),
+        auth_header: z.string().max(300).nullable().default(null),
+        target_entity: z.string().max(120).nullable().default(null),
+      })
+      .parse(req.body || {});
+    const result = await configureConnector(
+      db,
+      id,
+      connectorId,
+      Object.fromEntries(Object.entries(input).filter(([, v]) => v !== null && v !== '')) as Record<
+        string,
+        string
+      >,
+    );
     res.json(result);
   });
 

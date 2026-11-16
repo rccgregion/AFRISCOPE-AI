@@ -45,10 +45,7 @@ const SAMPLE_OVERRIDE_NAMES: Record<string, string> = {
  * removed rather than repeated, and the remainder of the note is kept so the
  * topical context is not lost.
  */
-const UNVERIFIABLE_FRAGMENTS = [
-  /recently upgraded/gi,
-  /close to federal financing flows/gi,
-];
+const UNVERIFIABLE_FRAGMENTS = [/recently upgraded/gi, /close to federal financing flows/gi];
 
 export type Rejection = { row: number; field?: string; reason: string };
 export type Warning_ = { row: number; reason: string };
@@ -109,7 +106,8 @@ export function parseFacilities(csv: string): {
     const row = i + 2; // header is line 1
     const id = (raw.facility_id || '').trim();
     const name = (raw.facility_name || '').trim();
-    if (!id) return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
+    if (!id)
+      return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
     if (!name)
       return rejections.push({ row, field: 'facility_name', reason: 'facility_name is required' });
     if (seen.has(id))
@@ -174,7 +172,8 @@ export function parseStock(
     const row = i + 2;
     const id = (raw.facility_id || '').trim();
     const medicine = (raw.medicine || '').trim();
-    if (!id) return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
+    if (!id)
+      return rejections.push({ row, field: 'facility_id', reason: 'facility_id is required' });
     if (!medicine)
       return rejections.push({ row, field: 'medicine', reason: 'medicine is required' });
     if (!knownFacilityIds.has(id))
@@ -207,7 +206,10 @@ export function parseStock(
         reason: 'last_signal_date must be a valid YYYY-MM-DD date',
       });
     if (asOf > today)
-      warnings.push({ row, reason: `last_signal_date ${asOf} is in the future; stored as supplied` });
+      warnings.push({
+        row,
+        reason: `last_signal_date ${asOf} is in the future; stored as supplied`,
+      });
 
     const key = `${id}|${medicine.toLowerCase()}|${asOf}`;
     if (seen.has(key))
@@ -392,7 +394,11 @@ export async function importSamplePack(
       row_count: stock.accepted.length,
       checksum: String(stock.accepted.length) + '-sample-pack',
       period_start: stock.accepted.map((r) => r.as_of).sort()[0] ?? null,
-      period_end: stock.accepted.map((r) => r.as_of).sort().at(-1) ?? null,
+      period_end:
+        stock.accepted
+          .map((r) => r.as_of)
+          .sort()
+          .at(-1) ?? null,
       notes: `${stock.rejections.length} rejected, ${stock.warnings.length} warnings`,
     });
 
@@ -403,21 +409,21 @@ export async function importSamplePack(
         c,
         'facilities',
         {
-        organisation_id: DEMO_ORG,
-        project_id: projectId,
-        created_by: actorUserId,
-        external_id: f.external_id,
-        name: f.name,
-        country: f.country || 'Unspecified',
-        region: f.district || 'Unspecified',
-        district: f.district || 'Unspecified',
-        facility_type: f.facility_type,
-        latitude: null,
-        longitude: null,
-        notes: f.notes,
-        source: isReal ? 'Verified content pack' : 'Sample pack (synthetic)',
-        import_batch_id: batchId,
-        data_origin: isReal ? 'real' : 'sample',
+          organisation_id: DEMO_ORG,
+          project_id: projectId,
+          created_by: actorUserId,
+          external_id: f.external_id,
+          name: f.name,
+          country: f.country || 'Unspecified',
+          region: f.district || 'Unspecified',
+          district: f.district || 'Unspecified',
+          facility_type: f.facility_type,
+          latitude: null,
+          longitude: null,
+          notes: f.notes,
+          source: isReal ? 'Verified content pack' : 'Sample pack (synthetic)',
+          import_batch_id: batchId,
+          data_origin: isReal ? 'real' : 'sample',
         },
         ['project_id', 'external_id'],
       );
@@ -433,22 +439,22 @@ export async function importSamplePack(
       c,
       'facilities',
       {
-      organisation_id: DEMO_ORG,
-      project_id: projectId,
-      created_by: actorUserId,
-      external_id: DERIVED_FACILITY_EXTERNAL_ID,
-      name: DERIVED_FACILITY_NAME,
-      country: 'Rwanda',
-      region: 'Rwamagana',
-      district: 'Rwamagana',
-      facility_type: 'Primary Health Center',
-      latitude: null,
-      longitude: null,
-      notes:
-        'Synthetic facility created so sample stock rows do not appear against the real Mwulire Health Center.',
-      source: 'Sample pack (synthetic)',
-      import_batch_id: batchId,
-      data_origin: 'sample',
+        organisation_id: DEMO_ORG,
+        project_id: projectId,
+        created_by: actorUserId,
+        external_id: DERIVED_FACILITY_EXTERNAL_ID,
+        name: DERIVED_FACILITY_NAME,
+        country: 'Rwanda',
+        region: 'Rwamagana',
+        district: 'Rwamagana',
+        facility_type: 'Primary Health Center',
+        latitude: null,
+        longitude: null,
+        notes:
+          'Synthetic facility created so sample stock rows do not appear against the real Mwulire Health Center.',
+        source: 'Sample pack (synthetic)',
+        import_batch_id: batchId,
+        data_origin: 'sample',
       },
       ['project_id', 'external_id'],
     );
@@ -460,13 +466,13 @@ export async function importSamplePack(
         c,
         'medicine_products',
         {
-        organisation_id: DEMO_ORG,
-        project_id: projectId,
-        created_by: actorUserId,
-        external_id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        name,
-        unit: 'units',
-        data_origin: 'sample',
+          organisation_id: DEMO_ORG,
+          project_id: projectId,
+          created_by: actorUserId,
+          external_id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name,
+          unit: 'units',
+          data_origin: 'sample',
         },
         ['project_id', 'external_id'],
       );
@@ -527,18 +533,18 @@ export async function importSamplePack(
           c,
           'operational_alerts',
           {
-          organisation_id: DEMO_ORG,
-          project_id: projectId,
-          created_by: actorUserId,
-          category: 'Stock',
-          severity: r.risk_level === 'Critical' ? 'High' : 'Medium',
-          title: `${SIMULATED_ALERT_PREFIX} ${r.medicine} coverage ${r.coverage ?? 'unknown'} days at ${facilityName}`,
-          triggering_condition: `${SIMULATED_ALERT_PREFIX} computed coverage_days ${r.coverage ?? 'n/a'} <= 21 (sample pack row ${r.source_row})`,
-          source_records: [],
-          recommended_action:
-            'Review with the facility and district manager. Sample data only - not reported by any facility.',
-          dedupe_key: `sample-${r.external_id}-${r.medicine}-${r.as_of}`,
-          data_origin: 'sample',
+            organisation_id: DEMO_ORG,
+            project_id: projectId,
+            created_by: actorUserId,
+            category: 'Stock',
+            severity: r.risk_level === 'Critical' ? 'High' : 'Medium',
+            title: `${SIMULATED_ALERT_PREFIX} ${r.medicine} coverage ${r.coverage ?? 'unknown'} days at ${facilityName}`,
+            triggering_condition: `${SIMULATED_ALERT_PREFIX} computed coverage_days ${r.coverage ?? 'n/a'} <= 21 (sample pack row ${r.source_row})`,
+            source_records: [],
+            recommended_action:
+              'Review with the facility and district manager. Sample data only - not reported by any facility.',
+            dedupe_key: `sample-${r.external_id}-${r.medicine}-${r.as_of}`,
+            data_origin: 'sample',
           },
           ['project_id', 'dedupe_key'],
         );

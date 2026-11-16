@@ -28,6 +28,7 @@ import {
   TriangleAlert,
   Command,
   Leaf,
+  Menu,
   X,
 } from 'lucide-react';
 import { useStore } from '../lib/store';
@@ -101,7 +102,17 @@ function ServerBanner() {
   );
 }
 export function Shell({ children }: { children: ReactNode }) {
-  const { workspace, project, data, role, selectProject, logout, realtimeConnected, liveEvents, switchPersona } = useStore();
+  const {
+    workspace,
+    project,
+    data,
+    role,
+    selectProject,
+    logout,
+    realtimeState,
+    liveEvents,
+    switchPersona,
+  } = useStore();
   const [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
     [search, setSearch] = useState(false),
@@ -114,6 +125,9 @@ export function Shell({ children }: { children: ReactNode }) {
   const isDemo = workspace?.organisations.some(
     (o) => o.id === project?.organisation_id && o.is_demo,
   );
+  // Server-computed (server/origin.ts): "Demo data" | "Real data loaded" |
+  // "Real and sample data" | "No data yet". Never derived from optimism.
+  const dataState = (data as { data_state?: string } | undefined)?.data_state;
   useEffect(() => {
     setMobile(false);
     setProfile(false);
@@ -196,11 +210,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="nav-caption">GOVERN & COLLABORATE</div>
           {navigation.slice(6, 9).map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.label : undefined}
-            >
+            <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined}>
               <item.icon size={17} />
               <span>{item.label}</span>
             </NavLink>
@@ -208,11 +218,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
           <div className="nav-caption">SYSTEM</div>
           {navigation.slice(9).map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              title={collapsed ? item.label : undefined}
-            >
+            <NavLink key={item.path} to={item.path} title={collapsed ? item.label : undefined}>
               <item.icon size={17} />
               <span>{item.label}</span>
             </NavLink>
@@ -232,6 +238,14 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="app-main">
         <header className="global-header">
+          <button
+            className="icon-btn mobile-nav-toggle"
+            aria-label="Open navigation"
+            aria-expanded={mobile}
+            onClick={() => setMobile(true)}
+          >
+            <Menu size={18} />
+          </button>
           <div className="header-breadcrumb">
             <Building2 size={15} className="header-org-icon" />
             <span className="header-org-name">{isDemo ? 'Demo organisation' : 'Organisation'}</span>
@@ -249,19 +263,49 @@ export function Shell({ children }: { children: ReactNode }) {
             </label>
           </div>
           <div className="header-actions">
-            <button className="global-search-button" onClick={() => setSearch(true)} title="Search (⌘K)">
+            <button
+              className="global-search-button"
+              onClick={() => setSearch(true)}
+              title="Search (⌘K)"
+            >
               <Search size={16} />
               <span className="search-label">Search workspace</span>
               <kbd className="search-kbd">
                 <Command size={10} /> K
               </kbd>
             </button>
-            {realtimeConnected && (
-              <span className="live-realtime-badge" title="Live Supabase real-time webhook stream connected">
-                <span className="live-dot" />
-                <span className="live-text">Live</span>
+            {/*
+              Two separate, truthful indicators:
+              - the data-state pill describes where the rows come from;
+              - the realtime pill describes the stream, and says "reconnecting"
+                or "off" instead of pretending to be connected.
+              The word "Live" is never used for demonstration data.
+            */}
+            <span
+              className={`data-state-pill data-state-${(dataState || 'no-data').toLowerCase().replaceAll(' ', '-')}`}
+              title="Where the rows in this workspace come from"
+            >
+              {dataState || 'No data yet'}
+            </span>
+            <span
+              className={`live-realtime-badge realtime-${realtimeState}`}
+              title={
+                realtimeState === 'connected'
+                  ? 'Realtime stream connected'
+                  : realtimeState === 'reconnecting'
+                    ? 'Realtime: reconnecting'
+                    : 'Realtime: off — falling back to 15-second polling'
+              }
+            >
+              <span className={`live-dot realtime-dot-${realtimeState}`} />
+              <span className="live-text">
+                {realtimeState === 'connected'
+                  ? 'Realtime: connected'
+                  : realtimeState === 'reconnecting'
+                    ? 'Realtime: reconnecting'
+                    : 'Realtime: off'}
               </span>
-            )}
+            </span>
             {isDemo && (
               <span className="header-persona-pill" title={`Active role: ${ROLE_LABELS[role]}`}>
                 <span className="persona-dot" />
@@ -274,11 +318,14 @@ export function Shell({ children }: { children: ReactNode }) {
               onClick={() => setNotifications(true)}
             >
               <Bell size={18} />
-              {(!!data?.operational_alerts.filter((a) => a.status === 'Open').length || !!liveEvents.length) && (
-                <i className="notification-dot" />
-              )}
+              {(!!data?.operational_alerts.filter((a) => a.status === 'Open').length ||
+                !!liveEvents.length) && <i className="notification-dot" />}
             </button>
-            <Link to="/guide" className="icon-btn header-help-link" aria-label="Help and documentation">
+            <Link
+              to="/guide"
+              className="icon-btn header-help-link"
+              aria-label="Help and documentation"
+            >
               <CircleHelp size={18} />
             </Link>
             <span className="header-divider" />
@@ -322,14 +369,16 @@ export function Shell({ children }: { children: ReactNode }) {
             )}
           </div>
         </header>
-        {isDemo && (
+        {(isDemo || dataState) && (
           <div className="demo-banner">
             <div className="demo-banner-info">
               <FlaskConical size={14} className="banner-flask shrink-0" />
               <span>
-                <strong>Synthetic demonstration</strong>
+                <strong>{dataState || 'Demonstration workspace'}</strong>
                 <span className="banner-divider">·</span>
-                Fictional records & planning assumptions. Not live operational data.
+                {dataState === 'Real data loaded'
+                  ? 'Rows imported from your own files carry their recorded source. This is not live operational data.'
+                  : 'Sample rows are synthetic and were not reported by any facility. Not live operational data.'}
               </span>
             </div>
             <Link to="/guide" className="demo-guide-link">

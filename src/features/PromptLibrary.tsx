@@ -115,10 +115,7 @@ export function PromptLibrary() {
                     </div>
                     <p className="prompt-text">{p.prompt}</p>
                     {p.unverified_claims?.length ? (
-                      <p className="unverified-flag">
-                        <ShieldAlert size={14} /> Contains an unverified claim — see
-                        docs/content-claims.md
-                      </p>
+                      <UnverifiedNote claims={p.unverified_claims} />
                     ) : null}
                     {result && (
                       <div className="prompt-answer">
@@ -172,9 +169,7 @@ export function PromptLibrary() {
                             download(
                               `prompt-${result.prompt_id}-${result.scope}.md`,
                               [
-                                result.uses_sample_data
-                                  ? `> ${SAMPLE_BADGE_TEXT}\n`
-                                  : '',
+                                result.uses_sample_data ? `> ${SAMPLE_BADGE_TEXT}\n` : '',
                                 `# ${result.prompt_title}`,
                                 result.scope_statement,
                                 '',
@@ -210,5 +205,36 @@ export function PromptLibrary() {
         </div>
       )}
     </Panel>
+  );
+}
+
+/**
+ * Explains an unverified claim in plain words, in place. The register lives in
+ * the repository for auditors, but a programme manager should not have to open a
+ * markdown file to understand a warning (Part 2.4).
+ */
+function UnverifiedNote({ claims }: { claims: string[] }) {
+  return (
+    <details className="unverified-flag">
+      <summary>
+        <ShieldAlert size={14} /> Contains a claim nobody has verified yet
+      </summary>
+      <div className="unverified-body">
+        <p>
+          This prompt contains {claims.length === 1 ? 'a statement' : 'statements'} about the
+          external world that this build has not checked against a source. If an answer repeats it,
+          treat it as something to confirm — not as a finding.
+        </p>
+        <ul>
+          {claims.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
+        <p className="muted">
+          The full list, with sources to check and their status, is kept in the project repository
+          at <code>docs/content-claims.md</code>.
+        </p>
+      </div>
+    </details>
   );
 }

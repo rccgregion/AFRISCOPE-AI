@@ -2,7 +2,7 @@
 
 A calm, trustworthy interface for evidence-based decision intelligence. Inspired by modern healthcare product design — the Cleargrin dental-clinic reference: soft sage greens, generous whitespace, rounded geometry, friendly pill CTAs, floating glass cards, and icon-led service grids — realised as a deliberate blend of four tactile styles: **glassmorphism**, **neumorphism**, **claymorphism**, and **skeuomorphism**.
 
-> **Reference:** Cleargrin Dental Clinic (cleargrindental.co) — “Healthy Smiles, Happier Lives.” AfriScope borrows its *calm clinical warmth*: deep-green headlines, mint surfaces, cream background, circular icon badges, trust rows, and a floating action card. It does not copy Cleargrin branding, imagery, or copy.
+> **Reference:** Cleargrin Dental Clinic (cleargrindental.co) — “Healthy Smiles, Happier Lives.” AfriScope borrows its _calm clinical warmth_: deep-green headlines, mint surfaces, cream background, circular icon badges, trust rows, and a floating action card. It does not copy Cleargrin branding, imagery, or copy.
 
 ## Design principles
 
@@ -14,21 +14,21 @@ A calm, trustworthy interface for evidence-based decision intelligence. Inspired
 
 ## Palette (from the Cleargrin reference)
 
-| Token | Value | Use |
-|---|---|---|
-| `--green-950` | `#0b2e23` | Display headlines, footer, deepest emphasis |
-| `--green-900` | `#123f31` | Primary text, headings, primary buttons |
-| `--green-700` | `#1f6b4f` | Interactive elements, links, active states |
-| `--green-500` | `#3f9d74` | Highlights, success, chart series 1 |
-| `--mint-300` | `#a9d8bd` | Icon badges, soft fills, chart series 2 |
-| `--sage-300` | `#a9c6b2` | Secondary text on dark, borders |
-| `--sage-100` | `#e3efe6` | Subtle fills, hover states, service-card tint |
-| `--mint-50` | `#f0f7f2` | Section alternation, inset wells |
-| `--cream` | `#f7f5ef` | App background |
-| `--surface` | `#ffffff` | Cards, panels |
-| `--ink` | `#1c2b24` | Body text |
-| `--amber` | `#b7791f` | Warnings, pending review |
-| `--red` | `#b3261e` | Errors, rejections |
+| Token         | Value     | Use                                           |
+| ------------- | --------- | --------------------------------------------- |
+| `--green-950` | `#0b2e23` | Display headlines, footer, deepest emphasis   |
+| `--green-900` | `#123f31` | Primary text, headings, primary buttons       |
+| `--green-700` | `#1f6b4f` | Interactive elements, links, active states    |
+| `--green-500` | `#3f9d74` | Highlights, success, chart series 1           |
+| `--mint-300`  | `#a9d8bd` | Icon badges, soft fills, chart series 2       |
+| `--sage-300`  | `#a9c6b2` | Secondary text on dark, borders               |
+| `--sage-100`  | `#e3efe6` | Subtle fills, hover states, service-card tint |
+| `--mint-50`   | `#f0f7f2` | Section alternation, inset wells              |
+| `--cream`     | `#f7f5ef` | App background                                |
+| `--surface`   | `#ffffff` | Cards, panels                                 |
+| `--ink`       | `#1c2b24` | Body text                                     |
+| `--amber`     | `#b7791f` | Warnings, pending review                      |
+| `--red`       | `#b3261e` | Errors, rejections                            |
 
 Charts use a colour-blind-safe categorical ramp derived from the greens, with direct labels (never colour alone).
 

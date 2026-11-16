@@ -141,16 +141,16 @@ export const DISTRICT_BOUNDARIES: GisDistrict[] = [
 
 // Approximate city coordinates [lng, lat] for the named hospitals.
 export const FACILITY_COORDINATES: Record<string, [number, number]> = {
-  'F001': [7.495, 9.057], // National Hospital Abuja
-  'F002': [7.08, 8.94], // University of Abuja Teaching Hospital, Gwagwalada
-  'F003': [3.36, 6.45], // Lagos University Teaching Hospital, Idi-Araba
-  'F004': [3.91, 7.4], // University College Hospital Ibadan
-  'F005': [7.5, 6.45], // University of Nigeria Teaching Hospital, Ituku-Ozalla
-  'F006': [5.61, 6.33], // University of Benin Teaching Hospital
-  'F007': [8.52, 12.0], // Aminu Kano University Teaching Hospital
-  'F008': [7.71, 11.07], // Ahmadu Bello University Teaching Hospital, Zaria
-  'F009': [8.89, 9.93], // Jos University Teaching Hospital
-  'F010': [8.32, 4.95], // University of Calabar Teaching Hospital
-  'F011': [7.01, 4.85], // University of Port Harcourt Teaching Hospital
-  'F012': [7.49, 9.06], // Federal Medical Centre Abuja
+  F001: [7.495, 9.057], // National Hospital Abuja
+  F002: [7.08, 8.94], // University of Abuja Teaching Hospital, Gwagwalada
+  F003: [3.36, 6.45], // Lagos University Teaching Hospital, Idi-Araba
+  F004: [3.91, 7.4], // University College Hospital Ibadan
+  F005: [7.5, 6.45], // University of Nigeria Teaching Hospital, Ituku-Ozalla
+  F006: [5.61, 6.33], // University of Benin Teaching Hospital
+  F007: [8.52, 12.0], // Aminu Kano University Teaching Hospital
+  F008: [7.71, 11.07], // Ahmadu Bello University Teaching Hospital, Zaria
+  F009: [8.89, 9.93], // Jos University Teaching Hospital
+  F010: [8.32, 4.95], // University of Calabar Teaching Hospital
+  F011: [7.01, 4.85], // University of Port Harcourt Teaching Hospital
+  F012: [7.49, 9.06], // Federal Medical Centre Abuja
 };

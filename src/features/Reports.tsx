@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { FileText, Plus, ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStore, useAction, type Row } from '../lib/store';
 import { api } from '../lib/api';
-import { PageHeader, Button, Status, Badge, Notice, Modal, Empty } from '../components/ui';
+import { PageHeader, Button, Status, Badge, Notice, Modal } from '../components/ui';
 import { ReportPreview } from '../components/workflow';
+import { EmptyState } from '../components/EmptyState';
 import { dateLabel } from '../../shared/domain';
 export function Reports() {
   const { data, allow } = useStore();
   const [create, setCreate] = useState(false),
     [selected, setSelected] = useState<Row | null>(null);
+  const evidenceCount = (data?.evidence_records || []).length;
   return (
     <>
       <PageHeader
@@ -48,13 +51,29 @@ export function Reports() {
           </button>
         ))}
       </div>
-      {!data?.reports.length && (
-        <Empty
-          title="Your evidence is ready for a report"
-          description="Choose validated evidence records and generate a portable Markdown report."
-          action={<Button onClick={() => setCreate(true)}>Generate report</Button>}
-        />
-      )}
+      {!data?.reports.length &&
+        (evidenceCount > 0 ? (
+          // Only claim evidence is ready when evidence records actually exist.
+          <EmptyState
+            title="No reports yet — your saved evidence is ready to compile"
+            description={`${evidenceCount} evidence record(s) can be referenced in a portable Markdown report.`}
+            action={
+              <Button onClick={() => setCreate(true)} disabled={!allow('manage')}>
+                Generate report
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No reports yet, and no saved evidence to report on"
+            description="Run an analysis first (Programme Operations → Recalculate, or Data Intelligence → forecast). Every result is saved with its method, assumptions and source versions, and can then be reported."
+            action={
+              <Link to="/operations" className="btn btn-secondary">
+                Run an analysis
+              </Link>
+            }
+          />
+        ))}
       <Notice>
         Exports contain the saved evidence snapshot, including large computed result objects.
         Reports do not imply approval of the recommended actions.

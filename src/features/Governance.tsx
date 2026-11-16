@@ -117,6 +117,7 @@ export function Governance() {
               </section>
             ))}
           </div>
+          <DataProvenance />
           <div className="two-col">
             <Panel title="Review responsibilities">
               <KeyValue
@@ -501,5 +502,91 @@ export function Governance() {
       )}
       {evidence && <EvidenceDetail id={evidence} onClose={() => setEvidence(null)} />}
     </>
+  );
+}
+
+/**
+ * Part 5.4 — what the Responsible AI page must say about the data behind it.
+ * Everything here is read from the server's shared origin summary and the
+ * facility records themselves; nothing is asserted that the data does not show.
+ */
+function DataProvenance() {
+  const { data, project } = useStore();
+  const summary = data?.origin_summary;
+  const facilities = data?.facilities || [];
+  const stock = summary?.inventory_latest ?? { sample: 0, real: 0 };
+  const facilityPair = summary?.facilities ?? { sample: 0, real: 0 };
+  const prefixed = facilities.filter((f) => String(f.name).startsWith('[Sample]')).length;
+  const unprefixed = facilities.length - prefixed;
+  const realFacilities = facilityPair.real;
+  const state = data?.data_state || 'Unknown';
+  return (
+    <Panel
+      title="What this data is — and what it is not"
+      subtitle="Read this before you quote any number from this workspace."
+    >
+      <div className="p-5 stack">
+        <KeyValue
+          data={{
+            'Data state': state,
+            'Reference date': dateLabel(data?.reference_date),
+            'Rows from sample data': `${stock.sample.toLocaleString()} stock record(s), ${facilityPair.sample} facility record(s)`,
+            'Rows from your own imports': `${stock.real.toLocaleString()} stock record(s), ${realFacilities} facility record(s)`,
+            'Facility names without [Sample]': `${unprefixed} of ${facilities.length} — see provenance note below`,
+          }}
+        />
+        <div className="provenance-grid">
+          <div className="provenance-cell">
+            <span>Sample rows</span>
+            <strong>{stock.sample.toLocaleString()}</strong>
+            <small>Synthetic. Not reported by any facility, government or funder.</small>
+          </div>
+          <div className="provenance-cell">
+            <span>Imported rows</span>
+            <strong>{stock.real.toLocaleString()}</strong>
+            <small>
+              Carry the source you recorded at import. Not verified by this application.
+            </small>
+          </div>
+          <div className="provenance-cell">
+            <span>Labelled [Sample]</span>
+            <strong>{prefixed}</strong>
+            <small>Facility records that are explicitly marked as fictional places.</small>
+          </div>
+        </div>
+        <Notice tone={stock.sample > 0 && stock.real > 0 ? 'warning' : 'info'}>
+          {stock.sample > 0 && stock.real > 0
+            ? 'This project mixes sample and imported rows. Every view must be read with its origin filter on, and no total should be quoted without saying which origin it covers.'
+            : stock.sample > 0
+              ? 'Every operational row in this view is synthetic sample data. It demonstrates behaviour; it is not a finding about any facility.'
+              : stock.real > 0
+                ? 'This view contains only rows you imported. The application validated their structure and consistency; it has not verified them against any facility.'
+                : 'This view has no operational rows yet, so it supports no conclusion at all.'}
+        </Notice>
+        <ul className="provenance-rules">
+          <li>
+            Sample facilities are named <code>[Sample] …</code> and never carry a real facility
+            name.
+          </li>
+          <li>
+            Sample alerts, transfers and explanatory text are prefixed <code>Simulated:</code>{' '}
+            wherever they appear.
+          </li>
+          <li>
+            Every exported CSV contains a <code>data_origin</code> column and an{' '}
+            <code>origin_label</code> column, so a file cannot lose its label by being downloaded.
+          </li>
+          <li>
+            Aggregated counts are computed once on the server per origin, so the header, Data
+            Intelligence, Operations, Finance and Alerts cannot disagree.
+          </li>
+          <li>
+            {unprefixed > 0
+              ? `Facility names without the [Sample] prefix (${unprefixed} in ${project?.title ?? 'this project'}) are real public place names used as reference labels. The stock, consumption and financing values attached to them are synthetic demonstration values and were not reported by those facilities. Do not present them as facility records.`
+              : 'Every facility name in this project carries the [Sample] prefix.'}
+          </li>
+        </ul>
+      </div>
+    </Panel>
   );
 }

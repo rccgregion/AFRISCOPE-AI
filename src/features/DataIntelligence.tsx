@@ -39,18 +39,56 @@ import {
   matchesScope,
   type OriginScope,
 } from '../components/origin';
+import { EmptyState } from '../components/EmptyState';
+const TEMPLATES = [
+  { file: 'inventory', label: 'Stock snapshot' },
+  { file: 'facilities', label: 'Facilities' },
+  { file: 'medicine_products', label: 'Medicines' },
+  { file: 'budgets', label: 'Budgets' },
+];
+
+/**
+ * Template downloads sit next to "Import dataset" because that is where a
+ * programme manager looks when they are about to import (Part 3.2).
+ */
+function TemplateDownloads() {
+  return (
+    <details className="template-menu">
+      <summary className="btn btn-secondary">
+        <FileSpreadsheet size={16} />
+        Download templates
+      </summary>
+      <div className="template-list">
+        <p>
+          Start from a template. Required columns are listed in the import wizard, and rejected rows
+          are always reported rather than dropped.
+        </p>
+        {TEMPLATES.map((t) => (
+          <a key={t.file} href={'/demo/' + t.file + '.csv'} download>
+            <FileSpreadsheet size={15} />
+            <span>{t.label}</span>
+            <small>{t.file}.csv</small>
+          </a>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 export function DataIntelligence() {
   const { data, project, allow } = useStore();
   const [tab, setTab] = useState('Data catalogue'),
     [wizard, setWizard] = useState(false),
     [selected, setSelected] = useState<Row | null>(null),
     [scope, setScope] = useState<OriginScope>('all');
-  const originCounts = {
-    sample: (data?.facilities || []).filter((f) => f.data_origin === 'sample').length,
-    real: (data?.facilities || []).filter((f) => f.data_origin !== 'sample').length,
-  };
+  // Server-computed counts shared with every other module.
+  const originCounts = data?.origin_summary?.facilities ?? { sample: 0, real: 0 };
   const scopedDatasets = (data?.datasets || []).filter((d) => matchesScope(d.data_origin, scope));
-  const scopedFacilities = (data?.facilities || []).filter((f) => matchesScope(f.data_origin, scope));
+  /** Records exist, but the origin filter hides them all. */
+  const filteredOut = (data?.datasets || []).length > 0 && scopedDatasets.length === 0;
+  const scopedFacilities = (data?.facilities || []).filter((f) =>
+    matchesScope(f.data_origin, scope),
+  );
   return (
     <>
       <PageHeader
@@ -60,9 +98,27 @@ export function DataIntelligence() {
       >
         <a className="btn btn-secondary" href="/demo/inventory_defects.csv" download>
           <FlaskConical size={16} />
-          Defect fixture
+          Sample files with errors (for testing validation)
         </a>
-        <Button onClick={() => setWizard(true)} disabled={!allow('data')}>
+        <TemplateDownloads />
+        {allow('admin') ? (
+          <Link className="btn btn-secondary" to="/administration#data">
+            Clear sample data
+          </Link>
+        ) : (
+          <span
+            className="btn btn-secondary is-disabled"
+            title="Requires the organisation administrator role"
+            aria-disabled="true"
+          >
+            Clear sample data
+          </span>
+        )}
+        <Button
+          onClick={() => setWizard(true)}
+          disabled={!allow('data')}
+          title={allow('data') ? '' : 'Your role cannot import datasets'}
+        >
           <Upload size={16} />
           Import dataset
         </Button>
@@ -70,11 +126,6 @@ export function DataIntelligence() {
       <div className="origin-bar">
         <OriginFilter value={scope} onChange={setScope} counts={originCounts} />
         <MixedOriginWarning counts={originCounts} />
-        {allow('admin') && (
-          <Link className="btn btn-secondary" to="/administration#data">
-            Clear sample data
-          </Link>
-        )}
       </div>
       <Tabs
         items={[
@@ -116,7 +167,8 @@ export function DataIntelligence() {
                 <div className="dataset-meta">
                   <span>{d.kind.replaceAll('_', ' ')}</span>
                   <span>
-                    {(data?.dataset_versions || []).filter((v) => v.dataset_id === d.id).length} version(s)
+                    {(data?.dataset_versions || []).filter((v) => v.dataset_id === d.id).length}{' '}
+                    version(s)
                   </span>
                 </div>
                 <OriginBadge origin={d.data_origin} />
@@ -130,26 +182,31 @@ export function DataIntelligence() {
               </button>
             ))}
           </div>
-          {!scopedDatasets.length && (
-            <Empty
-              title={scope === 'real' ? 'No real data in this project yet' : 'Bring your first dataset'}
-              description={
-                scope === 'real'
-                  ? 'Only real rows are shown. Import your facility and stock files to replace the labelled sample pack — or switch the origin filter back to All.'
-                  : 'CSV and XLSX imports are validated before any record enters the analytical workspace.'
-              }
-              action={
-                <div className="inline-actions">
-                  <Button disabled={!allow('data')} onClick={() => setWizard(true)}>
-                    Import your real data
-                  </Button>
-                  <a className="btn btn-secondary" href="/api/import-templates/facilities">
-                    Facility template
-                  </a>
-                </div>
-              }
-            />
-          )}
+          {!scopedDatasets.length &&
+            (filteredOut ? (
+              <EmptyState
+                variant="filtered"
+                title="No datasets match this origin filter"
+                description={`This project has ${(data?.datasets || []).length} dataset(s); none of them is tagged ${scope}. Nothing has been deleted — clear the filter to see everything.`}
+                filterLabel={scope === 'sample' ? 'Sample only' : 'Real only'}
+                onClearFilter={() => setScope('all')}
+              />
+            ) : (
+              <EmptyState
+                title="Bring your first dataset"
+                description="CSV and XLSX imports are validated before any record enters the analytical workspace, and rejected rows are reported with their reason."
+                action={
+                  <div className="inline-actions">
+                    <Button disabled={!allow('data')} onClick={() => setWizard(true)}>
+                      Import your real data
+                    </Button>
+                    <a className="btn btn-secondary" href="/api/import-templates/facilities">
+                      Facility template
+                    </a>
+                  </div>
+                }
+              />
+            ))}
           <Panel
             title="Facility records in this view"
             subtitle="Every sample row is labelled. Real rows come from files you imported and carry their source."
@@ -172,17 +229,24 @@ export function DataIntelligence() {
                     key: 'data_origin',
                     label: 'Origin',
                     render: (r) =>
-                      r.data_origin === 'sample' ? <OriginBadge origin="sample" /> : <Badge tone="green">Real</Badge>,
+                      r.data_origin === 'sample' ? (
+                        <OriginBadge origin="sample" />
+                      ) : (
+                        <Badge tone="green">Real</Badge>
+                      ),
                   },
                 ]}
               />
             ) : (
-              <NoDataYet what="facility records" onImport={allow('data') ? () => setWizard(true) : undefined} />
+              <NoDataYet
+                what="facility records"
+                onImport={allow('data') ? () => setWizard(true) : undefined}
+              />
             )}
           </Panel>
           <Panel
             title="Available synthetic downloads"
-            subtitle="Fixed seed 20260930. All places and operational records are fictional."
+            subtitle="Example and template files. Every place, price and operational record in them is fictional."
           >
             <div className="download-grid">
               {[

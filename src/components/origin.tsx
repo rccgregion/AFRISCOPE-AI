@@ -51,14 +51,27 @@ export function OriginFilter({
         >
           {o.label}
           {counts && o.id !== 'all' ? (
-            <b className="chip-count">
-              {o.id === 'sample' ? counts.sample : counts.real}
-            </b>
+            <b className="chip-count">{o.id === 'sample' ? counts.sample : counts.real}</b>
           ) : null}
         </button>
       ))}
     </div>
   );
+}
+
+/**
+ * Attach provenance to an export so a downloaded file can never lose the
+ * sample/real distinction. Every export in the app goes through this.
+ */
+export function exportLabelRows<T extends Record<string, unknown>>(rows: T[]) {
+  return rows.map((r) => {
+    const origin = (r.data_origin as string) ?? 'real';
+    return {
+      ...r,
+      data_origin: origin,
+      origin_label: origin === 'sample' ? SAMPLE_BADGE_TEXT : 'Real data',
+    };
+  });
 }
 
 export function matchesScope(origin: string | null | undefined, scope: OriginScope) {
@@ -71,8 +84,8 @@ export function MixedOriginWarning({ counts }: { counts: { sample: number; real:
   return (
     <Notice tone="warning">
       This view mixes {counts.sample.toLocaleString()} sample row(s) with{' '}
-      {counts.real.toLocaleString()} real row(s). Sample rows are synthetic and are never reported by
-      a facility — filter by origin before quoting any total.
+      {counts.real.toLocaleString()} real row(s). Sample rows are synthetic and are never reported
+      by a facility — filter by origin before quoting any total.
     </Notice>
   );
 }
@@ -105,7 +118,13 @@ export function NoDataYet({ what, onImport }: { what: string; onImport?: () => v
   );
 }
 
-type Batch = { id: string; file_name: string | null; created_at: string; row_counts?: unknown; undone_at?: string | null };
+type Batch = {
+  id: string;
+  file_name: string | null;
+  created_at: string;
+  row_counts?: unknown;
+  undone_at?: string | null;
+};
 
 /**
  * Administration → Data. Sample-data controls plus the real-data import wizard.
@@ -186,8 +205,8 @@ export function DataControls() {
             </div>
             <p>
               <strong>{dry.totals.sample.toLocaleString()}</strong> sample row(s) would be removed;{' '}
-              <strong>{dry.totals.real.toLocaleString()}</strong> real row(s) stay. Projects and audit
-              history are kept so the empty modules remain navigable.
+              <strong>{dry.totals.real.toLocaleString()}</strong> real row(s) stay. Projects and
+              audit history are kept so the empty modules remain navigable.
             </p>
             {!dry.canClear && (
               <Notice tone="warning">
@@ -212,10 +231,13 @@ export function DataControls() {
                 onClick={async () => {
                   setBusy('clear');
                   try {
-                    const r = await api<{ cleared: boolean; deletedTotal?: number; reason?: string }>(
-                      `/projects/${project.id}/sample-data/clear`,
-                      { body: { confirmation: confirm } },
-                    );
+                    const r = await api<{
+                      cleared: boolean;
+                      deletedTotal?: number;
+                      reason?: string;
+                    }>(`/projects/${project.id}/sample-data/clear`, {
+                      body: { confirmation: confirm },
+                    });
                     setSummary(
                       r.cleared
                         ? `Cleared ${r.deletedTotal ?? 0} sample row(s). Real rows were not touched.`
@@ -238,10 +260,11 @@ export function DataControls() {
                 onClick={async () => {
                   setBusy('restore');
                   try {
-                    const r = await api<{ created?: boolean; facilities?: number; stockRows?: number }>(
-                      `/projects/${project.id}/sample-data/restore`,
-                      { body: {} },
-                    );
+                    const r = await api<{
+                      created?: boolean;
+                      facilities?: number;
+                      stockRows?: number;
+                    }>(`/projects/${project.id}/sample-data/restore`, { body: {} });
                     setSummary(
                       r.created
                         ? `Restored the sample pack (${r.facilities ?? 0} facilities, ${r.stockRows ?? 0} stock rows).`
@@ -376,7 +399,11 @@ export function autoMap(headers: string[], targets: readonly string[]) {
 }
 
 /** Rewrite the CSV so its headers are exactly the canonical field names. */
-export function applyMapping(text: string, targets: readonly string[], map: Record<string, string>) {
+export function applyMapping(
+  text: string,
+  targets: readonly string[],
+  map: Record<string, string>,
+) {
   const { rows } = parseCsv(text);
   const out = rows.map((r) => {
     const next: Record<string, string> = {};
@@ -387,8 +414,16 @@ export function applyMapping(text: string, targets: readonly string[], map: Reco
 }
 
 type Preview = {
-  facilities: { accepted: number; rejections: { row: number; reason: string }[]; warnings: { row: number; reason: string }[] } | null;
-  stock: { accepted: number; rejections: { row: number; reason: string }[]; warnings: { row: number; reason: string }[] } | null;
+  facilities: {
+    accepted: number;
+    rejections: { row: number; reason: string }[];
+    warnings: { row: number; reason: string }[];
+  } | null;
+  stock: {
+    accepted: number;
+    rejections: { row: number; reason: string }[];
+    warnings: { row: number; reason: string }[];
+  } | null;
 };
 
 /** Upload → map → validate → preview → commit. Nothing is written before commit. */
@@ -412,10 +447,7 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
   const stockHeaders = useMemo(() => (stockRaw ? parseCsv(stockRaw).headers : []), [stockRaw]);
 
   if (!project) return null;
-  const readFile = async (
-    file: File,
-    kind: 'facilities' | 'stock',
-  ) => {
+  const readFile = async (file: File, kind: 'facilities' | 'stock') => {
     if (!/\.csv$/i.test(file.name)) {
       notify('Upload a .csv file. XLSX templates download as CSV-compatible sheets.', true);
       return;
@@ -476,7 +508,9 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
       setResult(
         r.committed
           ? `Committed ${r.written?.facilitiesWritten ?? 0} facility row(s) and ${r.written?.stockWritten ?? 0} stock row(s) as real data.` +
-              (r.rejections.length ? ` ${r.rejections.length} row(s) were rejected and reported.` : '')
+              (r.rejections.length
+                ? ` ${r.rejections.length} row(s) were rejected and reported.`
+                : '')
           : 'Nothing was committed because no row passed validation.',
       );
       setPreview(null);
@@ -520,7 +554,9 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
             accept=".csv"
             onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], 'facilities')}
           />
-          <small>{facilityName || 'facility_id, facility_name, country, …, source (required)'}</small>
+          <small>
+            {facilityName || 'facility_id, facility_name, country, …, source (required)'}
+          </small>
         </label>
         <label className="form-field">
           <span>Stock and signals CSV</span>
@@ -529,7 +565,9 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
             accept=".csv"
             onChange={(e) => e.target.files?.[0] && void readFile(e.target.files[0], 'stock')}
           />
-          <small>{stockName || 'facility_id, medicine, usable_stock_units, …, source (required)'}</small>
+          <small>
+            {stockName || 'facility_id, medicine, usable_stock_units, …, source (required)'}
+          </small>
         </label>
       </div>
       {(facilityHeaders.length > 0 || stockHeaders.length > 0) && (
@@ -604,7 +642,8 @@ export function RealImportWizard({ onDone }: { onDone?: () => void }) {
           <p>
             Valid: <strong>{preview.facilities?.accepted ?? 0}</strong> facility row(s),{' '}
             <strong>{preview.stock?.accepted ?? 0}</strong> stock row(s). Rejected:{' '}
-            <strong>{rejectionList.length}</strong>. Warnings: <strong>{warningList.length}</strong>.
+            <strong>{rejectionList.length}</strong>. Warnings: <strong>{warningList.length}</strong>
+            .
           </p>
           {rejectionList.length > 0 && (
             <table className="mini-table">

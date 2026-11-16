@@ -25,6 +25,7 @@ import {
 } from '../components/ui';
 import { RecordForm, RecommendationDetail } from '../components/workflow';
 import { ComparisonChart } from '../components/charts';
+import { EmptyState } from '../components/EmptyState';
 import { money, number } from '../../shared/domain';
 import { optimise, type Option, type Constraints } from '../../shared/analytics';
 export function Planner() {
@@ -139,9 +140,26 @@ export function Planner() {
             title="Compare scenario outcomes"
             subtitle="The same assumption catalogue supports each scenario. Snapshots preserve the inputs used at execution."
           >
-            <ComparisonChart
-              data={scenarios.map((s) => ({ name: s.name, value: s.result.expected_outcome || 0 }))}
-            />
+            {scenarios.length ? (
+              <ComparisonChart
+                data={scenarios.map((s) => ({
+                  name: s.name,
+                  value: s.result.expected_outcome || 0,
+                }))}
+              />
+            ) : (
+              // An empty chart drew axes with no bars, which looks like a result of zero.
+              <EmptyState
+                compact
+                title="Nothing to compare yet"
+                description="This chart plots the assumed people reached by each saved scenario. Create a scenario and run the solver; no chart is drawn until then."
+                action={
+                  <Button onClick={() => setCreate(true)} disabled={!allow('manage')}>
+                    Create scenario
+                  </Button>
+                }
+              />
+            )}
           </Panel>
         </>
       )}

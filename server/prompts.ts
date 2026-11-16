@@ -98,14 +98,12 @@ export const SAVED_PROMPTS: SavedPrompt[] = [
     prompt:
       'Explain how a decision-support tool focused on medicine availability and financing signals could support the goals of Horizon 1000 in Rwanda, using Mwulire Health Center as a concrete example.',
     requires: ['none'],
-    unverified_claims: [
-      'Horizon 1000 goals as stated — UNVERIFIED pending a recorded source.',
-    ],
+    unverified_claims: ['Horizon 1000 goals as stated — UNVERIFIED pending a recorded source.'],
   },
   {
     id: 'context-bhcpf-friction',
     group: CONTEXT_GROUP,
-    title: "Nigeria BHCPF friction points",
+    title: 'Nigeria BHCPF friction points',
     prompt:
       "Describe the known friction points in Nigeria's BHCPF flow (releases vs disbursements to facilities) and how an AI tool could surface delays for human review without automating payments.",
     requires: ['none'],

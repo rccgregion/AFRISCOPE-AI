@@ -11,7 +11,13 @@
 }
 
 :root {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   color: #1c2b24;
   background: #f7f5ef;
   font-synthesis: none;
@@ -26,7 +32,7 @@
   --deep: #0b2e23;
   --deep-surface: #123f31;
   --muted: #4e6557;
-  --muted-light: #71887b;
+  --muted-light: #5f7266; /* >= 4.5:1 on white, canvas and mint surfaces */
   --border: #e2e8e2;
   --border-subtle: #edf2ed;
   --canvas: #f7f5ef;
@@ -42,27 +48,22 @@
   --shadow-sm: 0 1px 2px 0 rgb(18 63 49 / 0.06);
   --shadow: 0 2px 6px -1px rgb(18 63 49 / 0.07), 0 1px 3px 0 rgb(18 63 49 / 0.04);
   --shadow-md: 0 4px 12px -2px rgb(18 63 49 / 0.08), 0 2px 5px -1px rgb(18 63 49 / 0.05);
-  --shadow-lg: 0 12px 28px -4px rgb(18 63 49 / 0.10), 0 6px 14px -2px rgb(18 63 49 / 0.05);
+  --shadow-lg: 0 12px 28px -4px rgb(18 63 49 / 0.1), 0 6px 14px -2px rgb(18 63 49 / 0.05);
   /* Claymorphism: puffy layered pastel shadows */
   --clay-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 0.6),
-    0 12px 24px rgb(18 63 49 / 0.10),
+    inset 0 2px 0 rgb(255 255 255 / 0.6), 0 12px 24px rgb(18 63 49 / 0.1),
     0 4px 8px rgb(18 63 49 / 0.06);
   --clay-shadow-hover:
-    inset 0 2px 0 rgb(255 255 255 / 0.65),
-    0 16px 32px rgb(18 63 49 / 0.13),
+    inset 0 2px 0 rgb(255 255 255 / 0.65), 0 16px 32px rgb(18 63 49 / 0.13),
     0 6px 12px rgb(18 63 49 / 0.08);
   /* Glassmorphism */
   --glass-bg: rgb(255 255 255 / 0.72);
   --glass-border: rgb(18 63 49 / 0.08);
   --glass-shadow: 0 8px 32px rgb(18 63 49 / 0.12);
   /* Neumorphism: inset wells */
-  --neu-inset:
-    inset 2px 2px 6px rgb(18 63 49 / 0.10),
-    inset -2px -2px 6px rgb(255 255 255 / 0.9);
+  --neu-inset: inset 2px 2px 6px rgb(18 63 49 / 0.1), inset -2px -2px 6px rgb(255 255 255 / 0.9);
   --neu-inset-pressed:
-    inset 3px 3px 8px rgb(18 63 49 / 0.14),
-    inset -2px -2px 6px rgb(255 255 255 / 0.85);
+    inset 3px 3px 8px rgb(18 63 49 / 0.14), inset -2px -2px 6px rgb(255 255 255 / 0.85);
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 20px;
@@ -76,7 +77,13 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   color: #1c2b24;
   background: var(--canvas);
   -webkit-font-smoothing: antialiased;
@@ -87,7 +94,11 @@ body {
 h1,
 h2,
 h3 {
-  font-family: 'Nunito', 'Inter', -apple-system, sans-serif;
+  font-family:
+    'Nunito',
+    'Inter',
+    -apple-system,
+    sans-serif;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
@@ -199,7 +210,9 @@ small {
 
 strong {
   font-weight: 600;
-  color: #0f241a;
+  /* inherit, not a hard-coded near-black: a global colour made <strong> inside
+     dark surfaces (the demo banner, dark panels) unreadable. */
+  color: inherit;
 }
 
 ul {
@@ -421,8 +434,12 @@ summary {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .skip-link {
@@ -471,7 +488,9 @@ summary {
   border-right: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   padding: 0 10px;
-  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sidebar-brand {
@@ -680,7 +699,7 @@ summary {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #7d9e8e;
+  color: #4e6557;
 }
 
 .connection-dot,
@@ -757,7 +776,9 @@ summary {
   flex-direction: column;
   min-width: 0;
   min-height: 100vh;
-  transition: margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    margin-left 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .global-header {
@@ -959,7 +980,8 @@ summary {
 
 .demo-banner {
   background: #0f3024;
-  color: #d1fae5;
+  /* WCAG AA: #ecfdf5 on #0f3024 is ~14:1. */
+  color: #ecfdf5;
   padding: 8px 32px;
   font-size: 12px;
   display: flex;
@@ -1256,7 +1278,9 @@ summary {
   box-shadow: var(--clay-shadow);
   overflow: hidden;
   min-width: 0;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .panel:hover {
@@ -1266,12 +1290,33 @@ summary {
 
 .panel-heading {
   display: flex;
+  /* Wrap instead of squeezing: a long title + long action used to be clipped by
+     the panel's overflow:hidden ("Data origin and sample data", Part 3.1). */
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-start;
+  gap: 12px 16px;
   padding: 18px 24px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--mint-soft);
+}
+.panel-heading > div:first-child {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.panel-heading > .btn,
+.panel-heading > .inline-actions,
+.panel-heading > a {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+.panel-heading .btn {
+  white-space: normal;
+  text-align: center;
+}
+.panel-heading h2,
+.panel-heading p {
+  overflow-wrap: anywhere;
 }
 
 .panel-heading h2 {
@@ -2207,7 +2252,9 @@ tr.clickable:hover {
 
 td strong {
   font-weight: 600;
-  color: #0f241a;
+  /* inherit, not a hard-coded near-black: a global colour made <strong> inside
+     dark surfaces (the demo banner, dark panels) unreadable. */
+  color: inherit;
 }
 
 .cell-stack {
@@ -2253,7 +2300,9 @@ td strong {
 .modal {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--glass-shadow), 0 24px 70px -12px rgb(18 63 49 / 0.28);
+  box-shadow:
+    var(--glass-shadow),
+    0 24px 70px -12px rgb(18 63 49 / 0.28);
   width: min(580px, calc(100vw - 32px));
   max-height: 85vh;
   padding: 0;
@@ -2920,7 +2969,7 @@ td strong {
   transform: translateY(-2px);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 8px 20px rgb(18 63 49 / 0.10);
+    0 8px 20px rgb(18 63 49 / 0.1);
 }
 
 .report-card-art {
@@ -3017,8 +3066,14 @@ td strong {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(12px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* Public Page / Landing / Auth */
@@ -4033,7 +4088,9 @@ td strong {
   border-radius: var(--radius-xl);
   box-shadow: var(--clay-shadow);
   padding: 20px;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .clay-tile:hover {
@@ -4161,9 +4218,10 @@ td strong {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
-.sample-inline {
+.sample-inline,
+.radar-list small.sample-inline {
   display: block;
-  color: var(--amber);
+  color: #7a4600;
   font-weight: 600;
 }
 .sample-ribbon {
@@ -4317,11 +4375,48 @@ td strong {
 }
 .unverified-flag {
   color: var(--amber);
-  font-size: 11px;
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+.unverified-flag > summary {
   display: flex;
   gap: 6px;
   align-items: center;
-  margin: 0 0 8px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+}
+.unverified-flag > summary::-webkit-details-marker {
+  display: none;
+}
+.unverified-flag > summary::after {
+  content: 'Show what is unverified';
+  font-weight: 500;
+  text-decoration: underline;
+  margin-left: 2px;
+}
+.unverified-flag[open] > summary::after {
+  content: 'Hide';
+}
+.unverified-body {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--amber);
+  background: var(--amber-soft, #fff8e6);
+  border-radius: 0 8px 8px 0;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.unverified-body p {
+  margin: 0 0 6px;
+}
+.unverified-body ul {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+.unverified-body li {
+  list-style: disc;
 }
 .prompt-answer {
   border-top: 1px solid var(--border-subtle);
@@ -4381,4 +4476,688 @@ td strong {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
+}
+
+/* ---------------------------------------------------------------------------
+   Truthful status indicators (Part 1.2): data provenance and stream state are
+   two separate pills. "Live" is only ever shown for real, connected state.
+   --------------------------------------------------------------------------- */
+.data-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid #e6d9b8;
+  background: #fffbeb;
+  color: #7a4708;
+}
+.data-state-pill.data-state-real-data-loaded {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+.data-state-pill.data-state-real-and-sample-data {
+  border-color: #d9c7f0;
+  background: #f6f2fc;
+  color: #4c2c74;
+}
+.data-state-pill.data-state-no-data-yet {
+  border-color: var(--border);
+  background: #f6f6f4;
+  color: #4e6557;
+}
+.realtime-reconnecting {
+  background: #fffbeb;
+  border-color: #e6d9b8;
+  color: #7a4708;
+}
+.realtime-polling {
+  background: #f4f4f2;
+  border-color: var(--border);
+  color: #4e6557;
+}
+.realtime-dot-reconnecting {
+  background: #d97706;
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+.realtime-dot-polling {
+  background: #9aa79f;
+}
+.realtime-dot-connected {
+  background: #1f9d63;
+}
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.demo-banner strong {
+  color: #f0fdf4;
+}
+
+/* ---------------------------------------------------------------------------
+   Settings: connectors and snapshots. Light surfaces, consistent with the
+   rest of the page (the previous dark panels read as disabled).
+   --------------------------------------------------------------------------- */
+.connector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.connector-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+.connector-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.connector-type {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted-light);
+}
+.connector-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 12px;
+  margin: 0;
+  font-size: 12px;
+}
+.connector-meta dt {
+  color: var(--muted-light);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.connector-meta dd {
+  margin: 0;
+  color: var(--ink, #1c2b24);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.connector-error {
+  color: var(--red);
+  font-size: 12px;
+  margin: 0;
+}
+.connector-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sync-reason {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted-light);
+}
+.connector-demo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--mint-soft);
+}
+.connector-demo code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.scheduler-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.scheduler-card.scheduler-off {
+  border-color: #e6d9b8;
+  background: var(--amber-subtle);
+}
+.scheduler-card.scheduler-on {
+  border-color: #bbf7d0;
+  background: var(--green-subtle);
+}
+.scheduler-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.scheduler-card p {
+  margin: 4px 0 0;
+}
+.small {
+  font-size: 11px;
+}
+
+/* Redistribution cards: no stray arrows, no detached icon, padded content. */
+.transfer-list {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+.transfer-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+  overflow: hidden;
+}
+.transfer-card:hover {
+  border-color: var(--green);
+  background: var(--mint-soft);
+}
+.transfer-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--green-subtle);
+  color: var(--green);
+}
+.transfer-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.transfer-route,
+.transfer-product {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.transfer-body .sample-badge {
+  margin-top: 4px;
+  justify-self: start;
+}
+
+/* "Data as of" strip on Programme Operations. */
+.as-of-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.as-of-line strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.as-of-sep {
+  /* Readable, not decorative: axe (and a low-vision reader) treats this as text. */
+  color: var(--muted);
+}
+
+/* Why a control is disabled, stated in place (Part 3.1). */
+.disabled-reason {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--amber-soft, #fff8e6);
+  border: 1px solid rgba(180, 120, 0, 0.25);
+  color: #6b4a00;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Import-area helpers: template dropdown + visibly disabled button (Part 3.2). */
+.template-menu {
+  position: relative;
+}
+.template-menu > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.template-menu > summary::-webkit-details-marker {
+  display: none;
+}
+.template-list {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  margin-top: 6px;
+  width: min(320px, 90vw);
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 36, 26, 0.16);
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+.template-list p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.template-list a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.template-list a:hover {
+  background: var(--mint-soft);
+}
+.template-list a small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+}
+.btn.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Part 4.1 — brand mark sizing and the public/guide headers
+   The logo SVG has no width/height attributes, so in any container that did not
+   set them (guide page header, public header, footer) the browser sized it from
+   the 1:1 viewBox: ~950 px tall on a 1000 px guide page. Size it once, here.
+   ========================================================================== */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  flex: 0 0 auto;
+}
+.logo svg {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  color: var(--green);
+}
+.logo > span {
+  font-family: 'Nunito', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  line-height: 1.1;
+}
+.sidebar .logo svg {
+  width: 28px;
+  height: 28px;
+}
+.guide-page header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.guide-page header .logo svg {
+  width: 36px;
+  height: 36px;
+}
+.public-header .logo svg,
+.public-footer .logo svg,
+.product-window-top .logo svg {
+  width: 28px;
+  height: 28px;
+}
+/* Keep the guide's blocks from butting into each other (a button used to touch
+   the next heading). */
+.guide-page main > * + * {
+  margin-top: 16px;
+}
+.guide-page main > .btn,
+.guide-page main > h2 {
+  margin-top: 28px;
+}
+.guide-page main > .guide-lead + .notice {
+  margin-top: 20px;
+}
+
+/* ==========================================================================
+   Part 4.3 — clipped content inside rounded panels
+   .panel has border-radius 28px + overflow:hidden, and several content blocks
+   (key/value lists, stacks, two-column grids, data controls, connector grids)
+   had no padding of their own, so the first characters of the first column sat
+   inside the rounded corner and were cut ("atabase", "xecutive").
+   ========================================================================== */
+.panel > .key-values,
+.panel > .stack,
+.panel > .two-col,
+.panel > .two-col-wide,
+.panel > .data-controls,
+.panel > .connector-grid,
+.panel > .json-view,
+.panel > .form-stack,
+.panel > .inline-actions,
+.panel > .grid-2,
+.panel > .transfer-list {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.panel > .key-values,
+.panel > .stack,
+.panel > .data-controls,
+.panel > .connector-grid,
+.panel > .json-view,
+.panel > .form-stack,
+.panel > .inline-actions {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.panel > .two-col,
+.panel > .two-col-wide {
+  padding-top: 4px;
+  padding-bottom: 18px;
+}
+.key-values dt,
+.key-values dd,
+.panel-heading h2,
+.panel-heading p,
+.page-heading h1,
+.page-heading p {
+  overflow-wrap: anywhere;
+}
+.panel > .table-wrap {
+  padding: 0 4px 8px;
+}
+
+/* ==========================================================================
+   Part 4.4 — Learning Academy modal and lesson cards
+   The modal used the translucent "glass" surface, so lesson text sat on top of
+   whatever was behind it. A dialog carrying reading content must be opaque.
+   ========================================================================== */
+.modal {
+  background: #ffffff;
+  color: #16241d;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 70px -12px rgb(18 63 49 / 0.38);
+}
+.modal::backdrop {
+  background: rgb(9 32 24 / 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.modal-head {
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+}
+.lesson-reader {
+  display: grid;
+  gap: 16px;
+}
+.lesson-reader h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--deep-surface);
+  margin-top: 4px;
+}
+.lesson-reader p {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #24382e;
+}
+/* The objectives list had no rule at all: no bullets, no indentation. */
+.detail-list,
+.lesson-reader ul {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+  list-style: disc outside;
+}
+.detail-list li,
+.lesson-reader ul li {
+  display: list-item;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #24382e;
+}
+.exercise-box ul {
+  padding-left: 20px;
+  list-style: disc outside;
+}
+
+/* "15 minOpen lesson": the card footer had no layout, so the duration and the
+   action ran together. */
+.lesson-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.lesson-card footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.lesson-card footer > span:last-child {
+  color: var(--green);
+}
+.lesson-card footer svg {
+  flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   Part 4.5 — Operations redistribution cards and the "Review transfer" action
+   ========================================================================== */
+.text-button {
+  white-space: nowrap;
+}
+.transfer-route {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.transfer-route svg {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}
+.transfer-list {
+  padding-bottom: 16px;
+}
+.transfer-icon svg {
+  flex: 0 0 auto;
+}
+
+/* Part 4.7 — the navigation list scrolls rather than truncating, and the footer
+   is pinned (flex-shrink:0), so every item stays reachable. Keep a little
+   breathing room under the last link so it never sits flush on the footer. */
+.sidebar-nav {
+  scroll-padding-bottom: 12px;
+  padding-bottom: 18px;
+  overscroll-behavior: contain;
+}
+
+/* ==========================================================================
+   Part 5.1 — shared empty state
+   ========================================================================== */
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.empty-state.compact {
+  padding: 24px 16px;
+}
+.empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--mint-soft);
+  border: 1px solid var(--border-subtle);
+  color: var(--green);
+}
+.empty-state.is-filtered .empty-state-icon {
+  background: var(--amber-soft, #fff8e6);
+  border-color: #f0dfb4;
+  color: #8a6100;
+}
+.empty-state h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--deep-surface);
+}
+.empty-state p {
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.empty-state-actions:empty {
+  margin-top: 0;
+}
+
+/* Part 5.4 — provenance disclosure on the Responsible AI page. */
+.provenance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.provenance-cell {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  display: grid;
+  gap: 4px;
+}
+.provenance-cell span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 700;
+}
+.provenance-cell strong {
+  font-size: 18px;
+  color: var(--deep-surface);
+}
+.provenance-cell small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.provenance-rules {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+  list-style: disc outside;
+}
+.provenance-rules li {
+  display: list-item;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #24382e;
+}
+.provenance-rules code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--mint-soft);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+/* Part 4.7 — below 1024px the sidebar is off-canvas, and there was no control to
+   open it: navigation was unreachable on a phone. The toggle is hidden on
+   desktop, where the sidebar is permanent. */
+.mobile-nav-toggle {
+  display: none;
+}
+@media (max-width: 1024px) {
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: var(--deep-surface);
+  }
+}
+
+/* Part 4.2 / accessibility: the provenance and empty-state additions above all
+   use the readable tokens. Anything decorative that axe still reads as text
+   (separators, muted labels) must meet 4.5:1 on its own background. */
+.as-of-line,
+.empty-state p,
+.provenance-cell small,
+.provenance-cell span,
+.disabled-reason,
+.sync-reason {
+  color: #45564c;
+}
+.provenance-cell span,
+.empty-state small {
+  color: #4e6557;
 }

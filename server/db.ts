@@ -9,7 +9,7 @@ import {
   unlinkSync,
   existsSync,
 } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** Locate the migrations directory regardless of the process working directory. */
@@ -31,10 +31,23 @@ export interface QueryResult {
 export interface Client {
   query(sql: string, params?: Params): Promise<QueryResult>;
 }
+/** Where the running process is actually reading and writing. Never contains
+ *  credentials: the connection string is reduced to driver, host, port and
+ *  database name, and a local file path is shown relative when possible. */
+export interface DatabaseInfo {
+  driver: 'postgres' | 'pglite';
+  /** Human-readable, safe to show to an administrator. */
+  label: string;
+  host: string | null;
+  database: string | null;
+  ephemeral: boolean;
+}
 export interface Database {
   admin<T>(fn: (tx: Client) => Promise<T>): Promise<T>;
   scoped<T>(user: string, fn: (tx: Client) => Promise<T>): Promise<T>;
   close(): Promise<void>;
+  /** Which database this handle is connected to (Part 5.5). */
+  info(): DatabaseInfo;
 }
 const dateFields = new Set([
   'reporting_date',
@@ -79,10 +92,46 @@ const normalize = (result: QueryResult, queryText?: string) => {
     ),
   };
 };
+/**
+ * Reduce a connection URL to something an administrator can read and quote
+ * without leaking the password, the user or any query parameters.
+ */
+export function describeConnection(url: string): DatabaseInfo {
+  let host = '';
+  let database = '';
+  let port = '5432';
+  try {
+    const parsed = new URL(url);
+    host = parsed.hostname;
+    database = parsed.pathname.replace(/^\//, '');
+    port = parsed.port || '5432';
+  } catch {
+    /* unparseable URL: report the driver only, never the raw value */
+  }
+  const provider = /pooler\.supabase\.com$/.test(host)
+    ? 'Supabase pooler (Postgres)'
+    : /\.supabase\.co$/.test(host) || /\.supabase\.com$/.test(host)
+      ? 'Supabase (Postgres)'
+      : /\.neon\.tech$/.test(host)
+        ? 'Neon (Postgres)'
+        : host
+          ? 'PostgreSQL'
+          : 'PostgreSQL';
+  return {
+    driver: 'postgres',
+    label: host
+      ? `${provider} at ${host}:${port}/${database || '(default database)'}`
+      : `${provider} via a server-side connection string`,
+    host: host || null,
+    database: database || null,
+    ephemeral: false,
+  };
+}
 export async function createDatabase(
   options: { path?: string; url?: string; migrate?: boolean; max?: number } = {},
 ): Promise<Database> {
   let tx: <T>(fn: (c: Client) => Promise<T>) => Promise<T>, close: () => Promise<void>;
+  let info: DatabaseInfo;
   const url =
     options.url ??
     (options.path
@@ -162,6 +211,7 @@ export async function createDatabase(
       }
     };
     close = () => pool.end();
+    info = describeConnection(url);
   } else {
     const { PGlite } = await import('@electric-sql/pglite');
     const path = options.path || resolve(process.env.DATABASE_PATH || '.data/afriscope');
@@ -193,6 +243,16 @@ export async function createDatabase(
         }
       }
     }
+    info = {
+      driver: 'pglite',
+      label:
+        path === ':memory:'
+          ? 'PGlite in-memory (nothing is persisted; lost when the process exits)'
+          : 'PGlite embedded database at ' + relative(process.cwd(), path),
+      host: 'local file',
+      database: path === ':memory:' ? 'memory' : relative(process.cwd(), path),
+      ephemeral: path === ':memory:',
+    };
     const db = new PGlite(path === ':memory:' ? undefined : path);
     try {
       await db.waitReady;
@@ -239,7 +299,7 @@ export async function createDatabase(
       await c.query('set local role afri_app');
       return fn(c);
     });
-  const db: Database = { admin, scoped, close };
+  const db: Database = { admin, scoped, close, info: () => info };
   if (options.migrate !== false)
     await admin(async (c) => {
       await c.query('select pg_advisory_xact_lock(729402)');

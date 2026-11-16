@@ -219,10 +219,9 @@ export async function clearSampleData(
       total += n;
     }
     const sampleProjectIds = (
-      await c.query(
-        "select id from projects where organisation_id=$1 and data_origin='sample'",
-        [organisationId],
-      )
+      await c.query("select id from projects where organisation_id=$1 and data_origin='sample'", [
+        organisationId,
+      ])
     ).rows.map((r) => String(r.id));
     for (const table of PROJECT_SCOPED_TABLES) {
       for (const pid of sampleProjectIds) {
@@ -243,7 +242,9 @@ export async function clearSampleData(
       before_state: null,
       after_state: {
         deleted: Object.fromEntries(
-          Object.entries(deleted).map(([k, v]) => [k, v.sample]).filter(([, v]) => v),
+          Object.entries(deleted)
+            .map(([k, v]) => [k, v.sample])
+            .filter(([, v]) => v),
         ),
         deleted_total: total,
         snapshot_id: snapshot?.id ?? null,

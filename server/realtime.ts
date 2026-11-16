@@ -49,7 +49,9 @@ class RealtimeManager extends EventEmitter {
     this.clients.set(clientId, { id: clientId, userId, orgId, res, connectedAt: new Date() });
 
     // Send initial connection event
-    res.write(`event: connected\ndata: ${JSON.stringify({ clientId, timestamp: new Date().toISOString() })}\n\n`);
+    res.write(
+      `event: connected\ndata: ${JSON.stringify({ clientId, timestamp: new Date().toISOString() })}\n\n`,
+    );
 
     // Send any recent events from the last 5 minutes
     for (const ev of this.recentEvents.slice(-5)) {

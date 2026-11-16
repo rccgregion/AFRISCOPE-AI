@@ -7,13 +7,13 @@ silently dropped.
 
 ## 1. Who can import
 
-| Role | Can import real data | Can clear / restore sample data |
-| --- | --- | --- |
-| Data analyst | Yes (`data` permission) | No |
-| Programme manager | Yes (`data` permission) | No |
-| Organisation administrator | Yes | Yes |
-| Platform administrator | Yes | Yes |
-| Operator, reviewer, executive | No (read-only for data) | No |
+| Role                          | Can import real data    | Can clear / restore sample data |
+| ----------------------------- | ----------------------- | ------------------------------- |
+| Data analyst                  | Yes (`data` permission) | No                              |
+| Programme manager             | Yes (`data` permission) | No                              |
+| Organisation administrator    | Yes                     | Yes                             |
+| Platform administrator        | Yes                     | Yes                             |
+| Operator, reviewer, executive | No (read-only for data) | No                              |
 
 Import, preview, undo and manual entry all require the `data` permission on the
 project. Clearing and restoring require the `manage` permission **and** an
@@ -30,31 +30,31 @@ at `/api/import-templates/<kind>?format=json` for the XLSX data-dictionary sheet
 
 ### Facilities file
 
-| Field | Required | Rules |
-| --- | --- | --- |
-| `facility_id` | yes | Unique within the file; stable identifier from the source |
-| `facility_name` | yes | Name as published by the source |
-| `country` | no | Used to check coordinates |
-| `state_or_region` | no | |
-| `district_or_lga` | no | |
-| `facility_type` | no | |
-| `catchment_population` | no | Number ≥ 0 |
-| `lat` | no | −90…90; supply with `lon` or not at all |
-| `lon` | no | −180…180 |
-| `source` | **yes** | Registry, report or system the row came from |
+| Field                  | Required | Rules                                                     |
+| ---------------------- | -------- | --------------------------------------------------------- |
+| `facility_id`          | yes      | Unique within the file; stable identifier from the source |
+| `facility_name`        | yes      | Name as published by the source                           |
+| `country`              | no       | Used to check coordinates                                 |
+| `state_or_region`      | no       |                                                           |
+| `district_or_lga`      | no       |                                                           |
+| `facility_type`        | no       |                                                           |
+| `catchment_population` | no       | Number ≥ 0                                                |
+| `lat`                  | no       | −90…90; supply with `lon` or not at all                   |
+| `lon`                  | no       | −180…180                                                  |
+| `source`               | **yes**  | Registry, report or system the row came from              |
 
 ### Stock and signals file
 
-| Field | Required | Rules |
-| --- | --- | --- |
-| `facility_id` | yes | Must exist in the workspace or in the same batch |
-| `medicine` | yes | Medicine name |
-| `usable_stock_units` | yes | Number ≥ 0, expired/unusable stock excluded |
-| `avg_daily_consumption` | yes | Number ≥ 0 |
-| `as_of_date` | yes | `YYYY-MM-DD`, not in the future |
-| `financing_signal` | no | Free text exactly as recorded |
-| `reporting_period` | no | Label, e.g. `2026-Q3` |
-| `source` | **yes** | Registry, report or system the row came from |
+| Field                   | Required | Rules                                            |
+| ----------------------- | -------- | ------------------------------------------------ |
+| `facility_id`           | yes      | Must exist in the workspace or in the same batch |
+| `medicine`              | yes      | Medicine name                                    |
+| `usable_stock_units`    | yes      | Number ≥ 0, expired/unusable stock excluded      |
+| `avg_daily_consumption` | yes      | Number ≥ 0                                       |
+| `as_of_date`            | yes      | `YYYY-MM-DD`, not in the future                  |
+| `financing_signal`      | no       | Free text exactly as recorded                    |
+| `reporting_period`      | no       | Label, e.g. `2026-Q3`                            |
+| `source`                | **yes**  | Registry, report or system the row came from     |
 
 ## 3. Validation rules (rejections, not fixes)
 
@@ -139,10 +139,10 @@ reading using the same validation. The `source` is recorded as
 
 ## 9. Feature flags
 
-| Flag | Default | Effect |
-| --- | --- | --- |
-| `SAMPLE_DATA_CONTROLS` | `true` | Enables the dry-run, clear and restore endpoints |
-| `SAMPLE_DATA_RESTORE` | `false` | Enables the restore endpoint in production; set to `true` to allow a re-seed |
+| Flag                   | Default | Effect                                                                       |
+| ---------------------- | ------- | ---------------------------------------------------------------------------- |
+| `SAMPLE_DATA_CONTROLS` | `true`  | Enables the dry-run, clear and restore endpoints                             |
+| `SAMPLE_DATA_RESTORE`  | `false` | Enables the restore endpoint in production; set to `true` to allow a re-seed |
 
 ## 10. What this build does not do
 

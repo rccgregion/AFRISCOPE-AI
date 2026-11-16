@@ -190,6 +190,21 @@ export const dateLabel = (date: string | null | undefined) =>
         timeZone: 'UTC',
       })
     : 'Not set';
+/**
+ * A date can only be described as upcoming if it is on or after the operational
+ * reference date. Earlier dates are reported as overdue rather than presented as
+ * a future delivery (Part 2.3).
+ */
+export function deliveryLabel(expected: string | null | undefined, asOf: string | undefined) {
+  if (!expected) return 'Not recorded';
+  const label = dateLabel(expected);
+  const ref = asOf ? Date.parse(asOf) : NaN;
+  const when = Date.parse(expected);
+  if (!Number.isFinite(ref) || !Number.isFinite(when)) return label;
+  if (when < ref) return label + ' (overdue as of ' + dateLabel(asOf) + ')';
+  if (when === ref) return label + ' (expected today)';
+  return label;
+}
 export const DEMO_ORG = '00000000-0000-4000-8000-000000000001';
 export const DEMO_PROJECTS = [
   '10000000-0000-4000-8000-000000000001',
