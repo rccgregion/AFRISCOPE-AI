@@ -291,12 +291,83 @@ export function createApp(db: Database) {
     if (res.headersSent) return next();
     next();
   });
+  /**
+   * Diagnostic snapshot for GET /api/health?verbose=1. Returns booleans and
+   * row counts only — never environment values, credentials or tokens.
+   *
+   * roleSwitchOk is the important one: `db.scoped()` enforces tenant
+   * isolation with `set local role afri_app`, which fails with 42501 when the
+   * connecting user is not a member of afri_app (see migration 009). Without
+   * this probe that misconfiguration only shows up as a 500 on workspace
+   * routes after a user has already loaded the app.
+   */
+  const healthProbe = async () => {
+    const result = {
+      status: 'ok' as 'ok' | 'unavailable',
+      dbReachable: false,
+      roleSwitchOk: false,
+      sessionSecretSet: !!process.env.SESSION_SECRET,
+      demoModeOn: demoModeEnabled(),
+      seedRowCounts: { projects: 0, facilities: 0 },
+      detail: '' as string,
+    };
+    try {
+      await db.admin((c) => c.query('select 1'));
+      result.dbReachable = true;
+    } catch (error) {
+      result.status = 'unavailable';
+      result.detail = (error instanceof Error ? error.message : String(error))
+        .replace(/:\/\/[^@\s]+@/g, '://[redacted]@')
+        .slice(0, 200);
+      return result;
+    }
+    // Prove SET ROLE works, then roll the probe back. The sentinel error is
+    // thrown on purpose so db.admin() rolls back the transaction.
+    try {
+      await db.admin(async (c) => {
+        await c.query('set local role afri_app');
+        throw Object.assign(new Error('role probe rollback'), { code: 'ROLE_PROBE_ROLLBACK' });
+      });
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code !== 'ROLE_PROBE_ROLLBACK') {
+        result.status = 'unavailable';
+        result.detail = `set local role afri_app failed: ${(error as Error).message}`.slice(0, 200);
+      } else {
+        result.roleSwitchOk = true;
+      }
+    }
+    try {
+      const counts = await db.admin((c) =>
+        c.query(
+          'select (select count(*) from projects)::int as projects, (select count(*) from facilities)::int as facilities',
+        ),
+      );
+      const row = counts.rows[0] as { projects?: number; facilities?: number } | undefined;
+      result.seedRowCounts = {
+        projects: Number(row?.projects ?? 0),
+        facilities: Number(row?.facilities ?? 0),
+      };
+    } catch {
+      // Row counts are diagnostic only; leave zeros rather than fail health.
+    }
+    return result;
+  };
   route(
     'get',
     '/health',
-    async (_req, res) => {
+    async (req, res) => {
       // Liveness + readiness: the database must answer SELECT 1, otherwise
       // the deployment is unusable and we say so with 503.
+      if (req.query.verbose === '1') {
+        // Diagnostic mode: booleans and row counts only. Never returns
+        // environment values, connection strings, tokens or secrets.
+        const probe = await healthProbe();
+        // 503 when the database is unreachable OR the role switch fails:
+        // both mean db.scoped() routes (e.g. GET /api/workspace) cannot serve.
+        res.status(probe.status === 'ok' ? 200 : 503).json(probe);
+        return;
+      }
       try {
         await db.admin((c) => c.query('select 1'));
       } catch (error) {
@@ -1972,12 +2043,24 @@ export function createApp(db: Database) {
                 : ['23505', '23514', '23503'].includes(error.code || '')
                   ? 400
                   : 500);
+      // Surface the PostgreSQL SQLSTATE and, for role/permission failures, the
+      // role name. 42501 on 'set local role afri_app' means the connecting
+      // database user is not a member of afri_app — see migration
+      // 009_afri_app_role_grants.sql. Keep the response body generic; the
+      // detail belongs in logs.
+      const failingRole = roleFromError(error);
       if (status >= 500)
         console.error(
           JSON.stringify({
             event: 'request_failed',
             path: req.path,
             code: error.code || 'INTERNAL',
+            ...(failingRole ? { role: failingRole } : {}),
+            ...(error.code === '42501'
+              ? {
+                  hint: 'PostgreSQL 42501: the connecting user cannot assume this role. Apply supabase/migrations/009_afri_app_role_grants.sql (grant afri_app to the connecting user with set true).',
+                }
+              : {}),
             message: error.message.slice(0, 250),
           }),
         );
@@ -1999,6 +2082,16 @@ function csvSafe(value: unknown) {
 }
 function httpError(status: number, message: string) {
   return Object.assign(new Error(message), { status });
+}
+/**
+ * Extract the role name from a PostgreSQL permission error, e.g.
+ *   permission denied to set role "afri_app"
+ *   must be member of role "afri_app"
+ * Returns null when the error is unrelated to roles.
+ */
+function roleFromError(error: Error): string | null {
+  const match = /role "([^"]{1,63})"/.exec(error.message || '');
+  return match ? match[1] : null;
 }
 function checkZipSize(buffer: Buffer) {
   let end = -1;

@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, afterAll, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import type { Express } from 'express';
 import { createDatabase, type Database } from '../../server/db';
@@ -85,6 +85,66 @@ describe('authenticated API and database isolation', () => {
   it('health is public but workspace requires authentication', async () => {
     await request(app).get(path('/health')).expect(200);
     await request(app).get(path('/workspace')).expect(401);
+  });
+  it('logs the Postgres error code and failing role without leaking it to the client', async () => {
+    const roleError = Object.assign(new Error('permission denied to set role "afri_app"'), {
+      code: '42501',
+    });
+    const brokenApp = createApp({
+      admin: async (fn: (c: { query: (sql: string) => Promise<{ rows: unknown[] }> }) => unknown) =>
+        fn({
+          query: async (sql: string) =>
+            /from auth_sessions s join user_profiles u/i.test(sql)
+              ? {
+                  rows: [
+                    {
+                      id: '20000000-0000-4000-8000-000000000003',
+                      email: null,
+                      username: null,
+                      full_name: 'Test',
+                      is_platform_admin: false,
+                      preferences: {},
+                      token_hash: 'hash',
+                    },
+                  ],
+                }
+              : { rows: [] },
+        }),
+      scoped: async () => {
+        throw roleError;
+      },
+      close: async () => {},
+    } as never);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(brokenApp)
+        .get(path('/workspace'))
+        .set('Authorization', 'Bearer test-token')
+        .expect(500);
+      expect(JSON.stringify(res.body)).not.toContain('afri_app');
+      const logged = spy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(logged).toContain('"event":"request_failed"');
+      expect(logged).toContain('"code":"42501"');
+      expect(logged).toContain('"role":"afri_app"');
+      expect(logged).toContain('009_afri_app_role_grants.sql');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+  it('verbose health reports the role switch and seed counts without secrets', async () => {
+    const res = await request(app).get(path('/health?verbose=1')).expect(200);
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      dbReachable: true,
+      roleSwitchOk: true,
+      sessionSecretSet: true,
+    });
+    expect(res.body.seedRowCounts.projects).toBeGreaterThan(0);
+    expect(res.body.seedRowCounts.facilities).toBeGreaterThan(0);
+    // Diagnostic output must never leak credentials or the secret value.
+    const body = JSON.stringify(res.body);
+    expect(body).not.toMatch(/postgres:\/\//);
+    expect(body).not.toContain(process.env.SESSION_SECRET as string);
   });
   it('rejects unsafe requests without CSRF header', async () => {
     await agents.programme_manager.post(path('/auth/logout')).send({}).expect(403);
